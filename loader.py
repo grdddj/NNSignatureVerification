@@ -242,9 +242,9 @@ def convert_to_image(image_path, img_w=150, img_h=150):
     img = Image.open(image_path)
     img = img.resize((img_w, img_h))
     img = img.convert('L')
-    img = img.point(lambda p: 255 if p > 230 else 0) # Thresholding
+    img = img.point(lambda p: 255 if p > 200 else 0) # Thresholding
     img = img.convert('1') # udela to to co chci??
-    img = np.array(img, dtype='float64')
+    img = np.array(img, dtype='float32')
     img /= 255
     img = img[..., np.newaxis]
     return img
@@ -370,8 +370,8 @@ def show_pair(pairs, labels, title='Image pairs', columns=2, rows=1):
             img_pair = pairs[row]
             label = labels[row]
             for column in range(columns):
-                axes[row, column].imshow(img_pair[0], cmap='gray')
-                axes[row, column].set_title(label[0])
+                axes[row, column].imshow(img_pair[column], cmap='gray')
+                axes[row, column].set_title(label[column])
                 axes[row,column].axis('off')
     plt.tight_layout()
     plt.subplots_adjust(wspace=0.4, hspace=0.4)
@@ -382,16 +382,16 @@ def visualize_snn_pair_sample(pair_array, label_array, title='Pair sample', nume
     pairs = []
     label = []
     for i in range(numer_of_samples):
-        k = np.random.randint(len(pair_array))
+        k = np.random.randint(0, len(pair_array))
         img1 = pair_array[k][0]
         img2 = pair_array[k][1]
         pairs.append([img1, img2])
-        label.append(['Genuine', 'Genuine' if label_array[k] == 1 else 'Forgery'])
+        label.append(['Geunine','Genuine' if label_array[k] == 1 else 'Forgery'])
 
     show_pair(pairs, label, title=title, columns=2, rows=numer_of_samples)
 
 
-def loader_for_snn(data_dir=None, image_width=200, image_height=200, batch_size=16, dataset='cedar'):
+def loader_for_snn(data_dir=None,train_size=6000, val_size=1500, test_size=500, image_width=200, image_height=200, dataset='cedar'):
     path_to_orig = 'data/genuine'
     path_to_forg = 'data/forgery'
 
@@ -412,15 +412,15 @@ def loader_for_snn(data_dir=None, image_width=200, image_height=200, batch_size=
     print('___________________TESTOVACI SADA___________________')
     test_pairs, test_labels = make_pairs(orig_test, forg_test)
     print('___________________VYTVORENY PARY__________________')
-    test_pairs, test_labels = convert_pairs_to_image_pairs(test_pairs, test_labels, output_size=100)
+    test_pairs, test_labels = convert_pairs_to_image_pairs(test_pairs, test_labels, img_w=image_width, img_h=image_height, output_size=test_size)
     print('___________________TRENOVACI SADA___________________')
     train_pairs, train_labels = make_pairs(orig_train, forg_train)
     print('___________________VYTVORENY PARY__________________')
-    train_pairs, train_labels = convert_pairs_to_image_pairs(train_pairs, train_labels, output_size=300)
-    print(print('___________________Validacni SADA___________________'))
+    train_pairs, train_labels = convert_pairs_to_image_pairs(train_pairs, train_labels, img_w=image_width, img_h=image_height, output_size=train_size)
+    print('___________________Validacni SADA___________________')
     val_pairs, val_labels = make_pairs(orig_val, forg_val)
     print('___________________VYTVORENY PARY__________________')
-    val_pairs, val_labels = convert_pairs_to_image_pairs(val_pairs, val_labels, output_size=100)
+    val_pairs, val_labels = convert_pairs_to_image_pairs(val_pairs, val_labels, img_w=image_width, img_h=image_height, output_size=val_size)
 
     print('_____________________HOTOVO__________________________________')
     end_time = time.time()
@@ -447,8 +447,9 @@ def loader_for_snn(data_dir=None, image_width=200, image_height=200, batch_size=
     #
     # batch = generate_snn_batch(orig_train, forg_train, batch_size=batch_size)
     # print(batch)
+    train_pairs, train_labels = np.array(train_pairs), np.array(train_labels, dtype=np.float32)
+    test_pairs, test_labels = np.array(test_pairs), np.array(test_labels, dtype=np.float32)
+    val_pairs, val_labels = np.array(val_pairs), np.array(val_labels, dtype=np.float32)
 
     return train_pairs, train_labels, test_pairs, test_labels, val_pairs, val_labels
 
-
-loader_for_snn()

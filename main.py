@@ -35,8 +35,9 @@ import model
 
 IMG_HEIGHT = 150
 IMG_WIDTH = 150
-LABELS = np.array(["Genuine", "Forged"])
-BATCH_SIZE = 16
+CHANNELS = 1
+LABELS = np.array(["Forged", "Genuine"])
+BATCH_SIZE = 32
 EPOCH_SIZE = 10
                       
 image_shape = (None, 100, 100, 3)
@@ -81,18 +82,22 @@ def cnn_train():
     print('\n\n\n\nAAAAAALLL DONE')
 
 def snn_train():
-    SNNMODEL = model.snn_model()
-    orig_train, orig_test, orig_val, forg_train, forg_test, forg_val = loader.loader_for_snn()
-    #train_data = loader.generate_snn_data(orig_train, forg_train)
-    #val_data = loader.generate_snn_data(orig_val, forg_val)
-    # history = SNNMODEL.fit(
-    #     #train_data,
-    #     loader.generate_snn_batch(orig_train, forg_train, batch_size=BATCH_SIZE),
-    #     epochs=24,
-    #     #validation_data=val_data,
-    #     validation_data=loader.generate_snn_batch(orig_val, forg_val, batch_size=BATCH_SIZE),
-    #     callbacks=functions.callbacks()
-    # )
+    SNNMODEL = model.snn_model(image_shape=(IMG_WIDTH, IMG_HEIGHT, CHANNELS))
+    train_pairs, train_labels, test_pairs, test_labels, val_pairs, val_labels = loader.loader_for_snn(image_width=IMG_WIDTH, image_height=IMG_HEIGHT, test_size=300, train_size=3000, val_size=500)
+
+    history = SNNMODEL.fit(
+        x=([train_pairs[:, 0, :,:], train_pairs[:,1,:,:]]),
+        y=train_labels,
+        steps_per_epoch= int(len(train_pairs)/BATCH_SIZE),
+        batch_size=BATCH_SIZE,
+        epochs=24,
+        shuffle=True,
+        validation_data=([val_pairs[:,0,:,:], val_pairs[:,1,:,:]], val_labels),
+        validation_steps=int(len(val_pairs)/BATCH_SIZE),
+        callbacks=functions.callbacks()
+    )
+
+    SNNMODEL.save(os.path.join('models', 'SnnSignatureVerificatorFinal.h5'))
 
     SNNMODEL.summary()
 

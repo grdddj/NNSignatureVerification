@@ -171,7 +171,7 @@ def snn_model(image_shape=(100, 100, 1)):
     distance = Lambda(euclidan_distance, output_shape=euclidan_dist_output_shape)([preprocessed_image1, preprocessed_image2])
     model = Model(inputs=[image1, image2], outputs=distance)
     rms = RMSprop(learning_rate=1e-4, rho=0.9, epsilon=1e-08)
-    model.compile(loss=functions.contrastive_loss, optimizer=rms)
+    model.compile(loss=functions.contrastive_loss, optimizer=rms, metrics=['accuracy'])
 
     return model
 
