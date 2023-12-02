@@ -105,8 +105,14 @@ def snn_train():
 
 
 def main():
-    snn_train()
-    #cnn_train()
+    ans = int(input('Do you wanna activate CNN(0) or SNN(1) ?'))
+    if ans == 0:cnn_train()
+    elif ans == 1:snn_train()
+    else:
+        print("nothings gonna happen :)")
+        return
+
+
 
 if __name__ == '__main__':
     main()

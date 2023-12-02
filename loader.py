@@ -24,6 +24,8 @@ IMAGE_TYPES = ['jpeg', 'png', 'bmp', 'png']
 DATASET_NUM_CLASSES = {
     'cedar': 55,
 }
+
+
 # DATASET_SIGNATURES_PER_PERSON = {
 #     'cedar_org': 24,
 #     'cedar_forg': 24,
@@ -47,50 +49,12 @@ def plot_images(image_array, image_array_label=[], num_column=5, title='Images i
     plt.show()
 
 
-# nastaveni thresholdu pro oddelani pozadi
-# def preprocess_function(image):
-#     img = cv2.imread(image)
-#     ret, thresh = cv2.threshold(img, 127, 255, cv2.THRESH_TOZERO_INV)
-#     return thresh
-
 
 def loader_for_cnn(data_dir=None, image_width=200, image_height=200, batch_size=16):
     # mam tam osobni s dlouhym i takze musim solo zadat ze data
     if (not data_dir):
         data_dir = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data')
     print(data_dir)
-
-    # Will test if the data is a good image type
-    # for image_class in os.listdir(data_dir):
-    #     print(image_class)
-    #     for image in os.listdir(os.path.join(data_dir, image_class)):
-    #         print(image)
-    #         image_path = os.path.join(data_dir, image_class, image)
-    #         try:
-    #             img = cv2.imread(image_path)
-    #             type = imghdr.what(image_path)
-    #             if type not in IMAGE_TYPES:
-    #                 print(f'Type {type} is not a matching type for this shit') #TODO LANGUAGE
-    #                 os.remove(image_path) # With datasets should never go to this problem :) it did :((
-    #         except Exception as e:
-    #             print(f'Issue: {e} with image {image_path}')
-
-    # #PREPROCESSING nastaveni generatoru dat
-    # train_datagen = image.ImageDataGenerator(
-    #     rescale=1./255, #Normilize the data
-    #     shear_range=0.2,
-    #     rotation_range=10,
-    #     data_format='channels_last',
-    #     preprocessing_function=preprocess_function,
-    #     cval=0.6, #Curvilinear Variable Axis Lens
-    #     width_shift_range=0.2,
-    #     height_shift_range=0.2,
-    # )
-    # val_datagen = image.ImageDataGenerator(
-    #     rescale=1./255, #Normilize the data
-    #     data_format='channels_last',
-    #     preprocessing_function=preprocess_function,
-    # )
 
     # Hozeni dat do datasetu a roztrideni na VAL a TRAIN datasety
     train_ds = tf.keras.utils.image_dataset_from_directory(
@@ -116,18 +80,6 @@ def loader_for_cnn(data_dir=None, image_width=200, image_height=200, batch_size=
         # crop_to_aspect_ratio=True,
     )
 
-    # Vytvoreni datasetu s pouzitim preprocesovzch funkci
-    # train_data = train_datagen.flow(
-    #     train_ds,
-    #     batch_size=batch_size,
-    #     shuffle=True,
-    # )
-    # val_data = val_datagen.flow(
-    #     val_ds,
-    #     batch_size=batch_size,
-    #     shuffle=True,
-    # )
-
     class_names = train_ds.class_names
     print(train_ds)
     print(class_names)
@@ -137,90 +89,18 @@ def loader_for_cnn(data_dir=None, image_width=200, image_height=200, batch_size=
 
     print('??????????????????__________________________________________?????????????????????')
 
-    # class_names = train_data.class_names
-    # print(class_names)
-    #
     iterator = iter(train_ds)
     sample_of_train_dataset, _ = next(iterator)
 
     plot_images(sample_of_train_dataset[:5])
-
-    # Quite redundant will change later
-    # for image_class in os.listdir(data_dir):
-    #     label = image_class
-    #     print(label)
-    #     for image in os.listdir(os.path.join(data_dir, image_class)):
-    #         image_path = os.path.join(data_dir, image_class, image)
-    #         img = cv2.imread(image_path)
-    #         full_dataset.append(img)
     return train_ds, val_ds
 
 
 # SNN LOADER
-# CURRENTLY UNUSING THESE BITCHES:
-def generate_snn_batch(orig_data, forg_data, img_h=150, img_w=150, batch_size=16):
-    print('___________GENERATING__BATCH___________\n')
-
-    while True:
-        orig_pairs = []
-        forg_pairs = []
-        orig_pair_labels = []
-        orig_forg_labels = []
-        all_pairs = []
-        all_labels = []
-
-        for orig, forg in zip(orig_data, forg_data):
-            orig_pairs.extend(list(itertools.combinations(orig, 2)))
-            for i in range(len(forg)):
-                forg_pairs.extend(list(itertools.product(orig[i:i + 1], random.sample(forg, 12))))
-
-        orig_pair_labels = [1] * len(orig_pairs)
-        orig_forg_labels = [0] * len(forg_pairs)
-
-        all_pairs = orig_pairs + forg_pairs
-        all_labels = orig_pair_labels + orig_forg_labels
-        del orig_pairs, orig_pair_labels, orig_forg_labels, forg_pairs
-        all_pairs, all_labels = shuffle(all_pairs, all_labels)
-
-        k = 0
-        pairs = [np.zeros((batch_size, img_h, img_w, 1)) for i in range(2)]
-        print(len(all_pairs))
-        targets = np.zeros((batch_size,))
-        for j, pair in enumerate(all_pairs):
-            img1 = cv2.imread(pair[0], 0)
-            img2 = cv2.imread(pair[1], 0)
-            img1 = cv2.resize(img1, (img_w, img_h))
-            img2 = cv2.resize(img2, (img_w, img_h))
-            # img1 = cv2.cvtColor(img1, cv2.COLOR_BGR2GRAY)
-            # img2 = cv2.cvtColor(img2, cv2.COLOR_BGR2GRAY)
-            img1 = np.array(img1, dtype=np.float32)
-            img2 = np.array(img2, dtype=np.float32)
-            img1 /= 255
-            img2 /= 255
-            img1 = img1[..., np.newaxis]
-            img2 = img2[..., np.newaxis]
-            pairs[0][k, :, :, :] = img1
-            pairs[1][k, :, :, :] = img2
-            targets[k] = all_labels[j]
-            k += 1
-            if k == batch_size:
-                yield pairs, targets
-                # k = 0
-                # pairs = [np.zeros((batch_size, img_h, img_w, 1)) for i in range(2)]
-                # targets = np.zeros((batch_size,))
-
-
-def generate_snn_data(orig_data, forg_data, epochs=24, img_h=150, img_w=150, batch_size=16):
-    data = []
-    for i in range(epochs):
-        data.append(generate_snn_batch(orig_data, forg_data))
-    return data
-
-
 def create_snn_data(data_dir, dataset='cedar'):
     num_classes = DATASET_NUM_CLASSES[dataset]
     images = glob.glob(data_dir + '/*.png')
-    num_of_signatures = int(len(images) / num_classes)
+    num_of_signatures = int(len(images) / num_classes) # this only works with Cedar
     print(images)
     # labels = []
     persons = []
@@ -242,8 +122,8 @@ def convert_to_image(image_path, img_w=150, img_h=150):
     img = Image.open(image_path)
     img = img.resize((img_w, img_h))
     img = img.convert('L')
-    img = img.point(lambda p: 255 if p > 200 else 0) # Thresholding
-    img = img.convert('1') # udela to to co chci??
+    img = img.point(lambda p: 255 if p > 200 else 0)  # Thresholding
+    img = img.convert('1')  # udela to to co chci??
     img = np.array(img, dtype='float32')
     img /= 255
     img = img[..., np.newaxis]
@@ -305,37 +185,6 @@ def make_pairs(orig_data, forg_data):
         print(len(testing_pair))
         print(f'{testing_pair[0]} , {testing_pair[1]} = {label_pairs[num]}')
     return data_pairs, label_pairs
-    # else:
-    #     images_per_person = int(output_size/ len(orig_data))
-    #     images_per_pair_possibilites = int(images_per_person/2)
-    #     combinations_per_image = int((output_size/len(orig_data))/DATASET_SIGNATURES_PER_PERSON['cedar_org']/1.5)# mozna pak predelat aby to sedelo na odlisne pocty
-    #     print(len(orig_data))
-    #     print(images_per_person)
-    #     print(images_per_pair_possibilites)
-    #     print(combinations_per_image)
-    #
-    #     for orig, forg in zip(orig_data, forg_data):
-    #         print('looop')
-    #         for i in range(len(orig)):
-    #             orig_pairs.extend(list(itertools.product(orig[i:i+1], random.sample(orig, combinations_per_image))))
-    #             forg_pairs.extend(list(itertools.product(orig[i:i+1], random.sample(forg, combinations_per_image))))
-    #         data_pairs = orig_pairs + forg_pairs
-    #         orig_pair_labels = [1] * len(orig_pairs)
-    #         orig_forg_labels = [0] * len(forg_pairs)
-    #         label_pairs = orig_pair_labels + orig_forg_labels
-    #     print(f'len of orig_pars: {len(orig_pairs)}')
-    #     print(f'len of forg_pairs {len(forg_pairs)}')
-    #     print('final results')
-    #     print(len(data_pairs))
-    #     print(len(label_pairs))
-    #     print(f'Output size was = {output_size}')
-    #     print('testing accuracy')
-    #     for i in range(5):
-    #         num = np.random.randint(0, len(data_pairs))
-    #         testing_pair = data_pairs[num]
-    #         print(len(testing_pair))
-    #         print(f'{testing_pair[0]} , {testing_pair[1]} = {label_pairs[num]}')
-    #     return data_pairs, label_pairs
 
 
 def visualize_snn_sample_signature_for_signer(orig_data, forg_data, image_width=200, image_height=200):
@@ -355,8 +204,9 @@ def visualize_snn_sample_signature_for_signer(orig_data, forg_data, image_width=
     img_array_label = ['genuine', 'genuine', 'forgery']
     plot_images(img_array_to_show, img_array_label, num_column=len(img_array_to_show))
 
+
 def show_pair(pairs, labels, title='Image pairs', columns=2, rows=1):
-    fig, axes = plt.subplots(rows, columns, figsize=(columns*5, rows*2))
+    fig, axes = plt.subplots(rows, columns, figsize=(columns * 5, rows * 2))
     fig.suptitle(title)
     if rows == 1:
         axes[0].imshow(pairs[0][0], cmap='gray')
@@ -372,7 +222,7 @@ def show_pair(pairs, labels, title='Image pairs', columns=2, rows=1):
             for column in range(columns):
                 axes[row, column].imshow(img_pair[column], cmap='gray')
                 axes[row, column].set_title(label[column])
-                axes[row,column].axis('off')
+                axes[row, column].axis('off')
     plt.tight_layout()
     plt.subplots_adjust(wspace=0.4, hspace=0.4)
     plt.show(block=True)
@@ -386,12 +236,13 @@ def visualize_snn_pair_sample(pair_array, label_array, title='Pair sample', nume
         img1 = pair_array[k][0]
         img2 = pair_array[k][1]
         pairs.append([img1, img2])
-        label.append(['Geunine','Genuine' if label_array[k] == 1 else 'Forgery'])
+        label.append(['Geunine', 'Genuine' if label_array[k] == 1 else 'Forgery'])
 
     show_pair(pairs, label, title=title, columns=2, rows=numer_of_samples)
 
 
-def loader_for_snn(data_dir=None,train_size=6000, val_size=1500, test_size=500, image_width=200, image_height=200, dataset='cedar'):
+def loader_for_snn(data_dir=None, train_size=6000, val_size=1500, test_size=500, image_width=200, image_height=200,
+                   dataset='cedar'):
     path_to_orig = 'data/genuine'
     path_to_forg = 'data/forgery'
 
@@ -401,7 +252,7 @@ def loader_for_snn(data_dir=None,train_size=6000, val_size=1500, test_size=500, 
     orig_train, orig_test, orig_val = create_snn_data(path_to_orig, dataset=dataset)
     forg_train, forg_test, forg_val = create_snn_data(path_to_forg, dataset=dataset)
 
-    #visualize_snn_sample_signature(orig_train, forg_train)
+    # visualize_snn_sample_signature(orig_train, forg_train)
 
     print(f'ORIG TEST: {len(orig_test)}')
     print(f'FORG TEST: {len(forg_test)}')
@@ -412,15 +263,18 @@ def loader_for_snn(data_dir=None,train_size=6000, val_size=1500, test_size=500, 
     print('___________________TESTOVACI SADA___________________')
     test_pairs, test_labels = make_pairs(orig_test, forg_test)
     print('___________________VYTVORENY PARY__________________')
-    test_pairs, test_labels = convert_pairs_to_image_pairs(test_pairs, test_labels, img_w=image_width, img_h=image_height, output_size=test_size)
+    test_pairs, test_labels = convert_pairs_to_image_pairs(test_pairs, test_labels, img_w=image_width,
+                                                           img_h=image_height, output_size=test_size)
     print('___________________TRENOVACI SADA___________________')
     train_pairs, train_labels = make_pairs(orig_train, forg_train)
     print('___________________VYTVORENY PARY__________________')
-    train_pairs, train_labels = convert_pairs_to_image_pairs(train_pairs, train_labels, img_w=image_width, img_h=image_height, output_size=train_size)
+    train_pairs, train_labels = convert_pairs_to_image_pairs(train_pairs, train_labels, img_w=image_width,
+                                                             img_h=image_height, output_size=train_size)
     print('___________________Validacni SADA___________________')
     val_pairs, val_labels = make_pairs(orig_val, forg_val)
     print('___________________VYTVORENY PARY__________________')
-    val_pairs, val_labels = convert_pairs_to_image_pairs(val_pairs, val_labels, img_w=image_width, img_h=image_height, output_size=val_size)
+    val_pairs, val_labels = convert_pairs_to_image_pairs(val_pairs, val_labels, img_w=image_width, img_h=image_height,
+                                                         output_size=val_size)
 
     print('_____________________HOTOVO__________________________________')
     end_time = time.time()
@@ -432,7 +286,6 @@ def loader_for_snn(data_dir=None,train_size=6000, val_size=1500, test_size=500, 
     visualize_snn_pair_sample(train_pairs, train_labels, title='Train pairs', numer_of_samples=5)
     visualize_snn_pair_sample(test_pairs, test_labels, title='Test pairs', numer_of_samples=1)
     visualize_snn_pair_sample(val_pairs, val_labels, title='Validation pairs', numer_of_samples=2)
-
 
     # orig_set = create_data(path_to_orig, dataset=dataset)
     # orig_train, orig_test, orig_val = orig_set[0], orig_set[1], orig_set[2]
@@ -452,4 +305,3 @@ def loader_for_snn(data_dir=None,train_size=6000, val_size=1500, test_size=500, 
     val_pairs, val_labels = np.array(val_pairs), np.array(val_labels, dtype=np.float32)
 
     return train_pairs, train_labels, test_pairs, test_labels, val_pairs, val_labels
-

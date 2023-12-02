@@ -72,7 +72,7 @@ def cnn_model(image_shape=(None,100 , 100, 1)):
                      #bias_regularizer=L1(l1=0.01), activity_regularizer=L2(l2=0.01)
                      ))
     model.add(MaxPooling2D(pool_size=max_pool_size))
-
+    model.add(Dropout(dropout_prob))
     # 3.
     model.add(Conv2D(filters=num_conv_filters * 4, kernel_size=(conv_kernel_size), input_shape=imag_shape,
                      activation='relu', kernel_regularizer=L1L2(l1=0.1e-4, l2=0.1e-5),
@@ -84,7 +84,7 @@ def cnn_model(image_shape=(None,100 , 100, 1)):
 
     # Plne propojena vrstva
     model.add(Flatten())
-    model.add(Dense(256, activation='relu'))
+    model.add(Dense(512, activation='relu'))
 
     # odstraneni neuronu proti overfittingu
     model.add(Dropout(dropout_prob*2))
