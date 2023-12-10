@@ -10,7 +10,7 @@ from keras.backend import relu, sigmoid
 # True imports
 from tensorflow.keras.models import Sequential, Model
 from tensorflow.keras.layers import Dense, Dropout, Flatten, Conv2D, MaxPool2D, MaxPooling2D, \
-    BatchNormalization, ZeroPadding2D, Input, Lambda
+    BatchNormalization, ZeroPadding2D, Input, Lambda, Concatenate
 from tensorflow.keras.regularizers import L1L2, L1, L2
 
 import functions
@@ -20,7 +20,7 @@ from keras.optimizers import SGD, RMSprop, Adadelta
 
 
 
-def cnn_model(image_shape=(None,100 , 100, 1)):
+def cnn_model(image_shape=(150 , 150, 1)):
     # konfigurace vrstev
     num_conv_filters = 32        # pocet conv. filtru
     max_pool_size = (2, 2)       # velikost maxpool filtru
@@ -44,23 +44,20 @@ def cnn_model(image_shape=(None,100 , 100, 1)):
     zoom = Sequential([
         layers.RandomZoom(height_factor=(-0.1, 0.1), width_factor=(-0.1,0.1))
     ])
-    # normalize = Sequential([
-    #     layers.Normalization()
-    # ])
 
 
     model = Sequential()  # Typ modelu
 
     #Preprocessed Vrstva
-    model.add(rescale)
-    model.add(threshold)
+    #model.add(rescale)
+    #model.add(threshold)
     #model.add(rotate)
     #model.add(translate)
     #model.add(zoom)
 
     # 1. vrstva
     model.add(Conv2D(filters=num_conv_filters, kernel_size=(conv_kernel_size), input_shape=imag_shape,
-                     activation='relu', kernel_regularizer=L1L2(l1=0.1e-4, l2=0.1e-5),
+                     activation='relu', kernel_regularizer=L1L2(l1=0.1e-4, l2=0.1e-5)#1,data_format='channels_last'
                      #bias_regularizer=L1(l1=0.01), activity_regularizer=L2(l2=0.01)
                      ))
     model.add(MaxPooling2D(pool_size=max_pool_size))
@@ -68,14 +65,14 @@ def cnn_model(image_shape=(None,100 , 100, 1)):
 
     # 2. vrstva
     model.add(Conv2D(filters=num_conv_filters * 2, kernel_size=(conv_kernel_size), input_shape=imag_shape,
-                     activation='relu', kernel_regularizer=L1L2(l1=0.1e-4, l2=0.1e-5),
+                     activation='relu', kernel_regularizer=L1L2(l1=0.1e-4, l2=0.1e-5)#,data_format='channels_last'
                      #bias_regularizer=L1(l1=0.01), activity_regularizer=L2(l2=0.01)
                      ))
     model.add(MaxPooling2D(pool_size=max_pool_size))
     model.add(Dropout(dropout_prob))
-    # 3.
+    # 3. vrstva
     model.add(Conv2D(filters=num_conv_filters * 4, kernel_size=(conv_kernel_size), input_shape=imag_shape,
-                     activation='relu', kernel_regularizer=L1L2(l1=0.1e-4, l2=0.1e-5),
+                     activation='relu', kernel_regularizer=L1L2(l1=0.1e-4, l2=0.1e-5)#,data_format='channels_last'
                      #bias_regularizer=L1(l1=0.01), activity_regularizer=L2(l2=0.01)
                      ))
     model.add(MaxPooling2D(pool_size=max_pool_size))
@@ -106,14 +103,16 @@ def snn_base_cnn_model(image_shape=(100 , 100, 1)):
 
 
     model.add(Conv2D(filters=num_conv_filters, kernel_size=(conv_kernel_size[0]*2, conv_kernel_size[1]*2),
-                        input_shape=imag_shape, activation='relu', data_format='channels_last'
+                        input_shape=imag_shape, activation='relu', data_format='channels_last',
+                     #kernel_regularizer=L1L2(l1=0.1e-4, l2=0.1e-5)
                      ))
     model.add(BatchNormalization(epsilon=1e-06, axis=-1, momentum=0.9))
     model.add(MaxPool2D(pool_size=max_pool_size))
+    model.add(Dropout(dropout_prob))
 
 
     model.add(Conv2D(filters=num_conv_filters*2, kernel_size=(conv_kernel_size), input_shape=imag_shape,
-                        activation='relu', data_format='channels_last'
+                        activation='relu', data_format='channels_last'#, kernel_regularizer=L1L2(l1=0.1e-4, l2=0.1e-5)
                      ))
     model.add(BatchNormalization(epsilon=1e-06, axis=-1, momentum=0.9))
     model.add(MaxPool2D(pool_size=max_pool_size))
@@ -121,12 +120,14 @@ def snn_base_cnn_model(image_shape=(100 , 100, 1)):
 
 
     model.add(Conv2D(filters=num_conv_filters*3, kernel_size=(conv_kernel_size), input_shape=imag_shape,
-                        activation='relu', data_format='channels_last'
+                        activation='relu', data_format='channels_last'#, kernel_regularizer=L1L2(l1=0.1e-4, l2=0.1e-5)
                      ))
     model.add(MaxPool2D(pool_size=max_pool_size))
+    model.add(Dropout(dropout_prob))
 
     model.add(Flatten())
-    model.add(Dense(512, kernel_regularizer=L2(l2=0.1e-5), activation='relu'))
+    model.add(Dense(512 #, kernel_regularizer=L2(l2=0.1e-5)
+                    , activation='relu'))
     model.add(Dropout(dropout_prob*2))
 
     model.add(Dense(128, activation='relu'))
@@ -168,10 +169,18 @@ def snn_model(image_shape=(100, 100, 1)):
     preprocessed_image2 = base_network(image2)
     print(preprocessed_image2.shape)
 
-    distance = Lambda(euclidan_distance, output_shape=euclidan_dist_output_shape)([preprocessed_image1, preprocessed_image2])
-    model = Model(inputs=[image1, image2], outputs=distance)
-    rms = RMSprop(learning_rate=1e-4, rho=0.9, epsilon=1e-08)
-    model.compile(loss=functions.contrastive_loss, optimizer=rms, metrics=['accuracy'])
+    #distance = Lambda(euclidan_distance, output_shape=euclidan_dist_output_shape)([preprocessed_image1, preprocessed_image2])
+    #model = Model(inputs=[image1, image2], outputs=distance)
+    #rms = RMSprop(learning_rate=1e-4, rho=0.9, epsilon=1e-08)
+    concat = Concatenate()([preprocessed_image1, preprocessed_image2])
+    dense = Dense(128, activation='relu')(concat)
+    output = Dense(1, activation='sigmoid')(dense)
+
+    model = Model(inputs=[image1, image2], outputs=output)
+    #model.compile(loss=functions.contrastive_loss, optimizer=rms, metrics=['accuracy'])
+    model.compile(loss='binary_crossentropy', optimizer='adam', metrics=['accuracy'])
+
+    model.summary()
 
     return model
 

@@ -8,6 +8,8 @@ import imghdr
 import time
 import random
 import matplotlib
+import sklearn.utils
+from scipy import ndimage
 
 matplotlib.use('TkAgg')
 import matplotlib.pyplot as plt
@@ -34,23 +36,272 @@ DATASET_NUM_CLASSES = {
 
 # Vizualizace dat:
 def plot_images(image_array, image_array_label=[], num_column=5, title='Images in dataset'):
-    fig, axes = plt.subplots(1, num_column)
-    fig.suptitle('This is a somewhat long figure title', fontsize=16)
+    fig, axes = plt.subplots(1, num_column, figsize=(20, 20))
+    fig.suptitle(title, fontsize=16)
     axes = axes.flatten()
     index = 0
     for img, ax in zip(image_array, axes):
         ax.imshow(img, cmap='Greys_r')
         if image_array_label != []:
             ax.set_title(image_array_label[index])
-        index += 1
+            index += 1
         ax.axis('off')
     fig.suptitle(title, fontsize=16)
     plt.tight_layout()
-    plt.show()
+    plt.show(block=True)
 
 
+# Loader z cesty
+def create_for_tr_ts_val_data(data_dir, dataset='cedar'):
+    num_classes = DATASET_NUM_CLASSES[dataset]
+    images = glob.glob(data_dir + '/*.png')
+    num_of_signatures = int(len(images) / num_classes)  # this only works with Cedar
+    print(images)
+    # labels = []
+    persons = []
+    index = 0
+    for person in range(num_classes):
+        signatures = []
+        for signature in range(num_of_signatures):
+            signatures.append(images[index])
+            index += 1
+        persons.append(signatures)
+    train_data, test_data, val_data = persons[:43], persons[43:45], persons[45:]
+    print(train_data)
+    print(test_data)
+    print(val_data)
+    return train_data, test_data, val_data
 
-def loader_for_cnn(data_dir=None, image_width=200, image_height=200, batch_size=16):
+
+def create_data(data_dir, dataset='cedar'):
+    num_classes = DATASET_NUM_CLASSES[dataset]
+    images = glob.glob(data_dir + '/*.png')
+    num_of_signatures = int(len(images) / num_classes)  # this only works with Cedar
+    print(images)
+    persons = []
+    index = 0
+    for person in range(num_classes):
+        signatures = []
+        for signature in range(num_of_signatures):
+            signatures.append(images[index])
+            index += 1
+        persons.append(signatures)
+    return persons
+
+
+# menic na obrazky
+def convert_to_image(image_path, img_w=150, img_h=150):
+    img = Image.open(image_path)
+    img = img.resize((img_w, img_h))
+    img = img.convert('L')
+    img = img.point(lambda p: 255 if p > 210 else 0)  # Thresholding
+    img = img.convert('1')  # udela to to co chci??
+    img = np.array(img, dtype='float32')
+    #img /= 255
+    img = img[..., np.newaxis]
+    return img
+
+
+# Augmentations:
+def rand_rotate(imag):
+    img = imag.copy()
+    w = img.shape[1]
+    h = img.shape[0]
+    if np.random.randint(0,2) == 0:
+        if np.random.randint(0,2) == 0:
+            angle = 10
+        else:
+            angle = -10
+    else:
+        if np.random.randint(0,2) == 0:
+            angle = 20
+        else:
+            angle = -20
+
+    matrix = cv2.getRotationMatrix2D((w / 2, h / 2), angle, 1.0)  # center cx, cy = w/2 h/2
+    img = cv2.warpAffine(img, matrix, (w, h), borderMode=cv2.BORDER_CONSTANT, borderValue=(1,1,1)
+                         #borderMode=cv2.BORDER_REPLICATE
+                         )
+    return img
+
+
+def rand_translation(imag):
+    img = imag.copy()
+    shift = 10.0
+    width = img.shape[1]
+    height = img.shape[0]
+    direction = np.random.randint(0, 4)
+
+    if direction == 0:  # UP
+        matrix = np.float32([[1,0,0], [0,1,-shift]])
+    if direction == 1:  # DOWN
+        matrix = np.float32([[1,0,0], [0,1,shift]])
+    if direction == 2:  # RIGHT
+        matrix = np.float32([[1,0,-shift], [0,1,0]])
+    if direction == 3:  # LEFT
+        matrix = np.float32([[1,0,shift], [0,1,0]])
+    img = cv2.warpAffine(img, matrix, (width, height),borderMode=cv2.BORDER_CONSTANT, borderValue=(1,1,1))
+    return img
+
+
+def rand_zoom(imag):
+    img = imag.copy()
+    zoom = float(np.random.randint(8, 12)) / 10
+    cy, cx = [i / 2 for i in img.shape[:-1]]
+    matrix = cv2.getRotationMatrix2D((cx, cy), 0, zoom)
+    img = cv2.warpAffine(img, matrix, img.shape[1::-1], flags=cv2.INTER_LINEAR, borderMode=cv2.BORDER_CONSTANT, borderValue=(1,1,1))
+    return img
+
+
+def rand_shear(imag):
+    img = imag.copy()
+    axe = np.random.randint(0, 2)
+    width = img.shape[1]
+    height = img.shape[0]
+    if axe == 0:
+        matrix = np.float32([[1, 0.5, 0], [0, 1, 0], [0, 0, 1]])
+    if axe == 1:
+        matrix = np.float32([[1, 0, 0], [0.5, 1, 0], [0, 0, 1]])
+
+    img = cv2.warpPerspective(img, matrix, (int(width * 1.2), int(height * 1.2)), borderMode=cv2.BORDER_CONSTANT, borderValue=(1,1,1))
+
+    return img
+
+
+def rand_noise(imag):
+    img = imag.copy()
+    gaussian_noise = np.random.normal(0, 0.3, img.shape)
+    img += gaussian_noise
+    img = np.clip(img, 0, 1)
+    return img
+
+
+# Agmentator
+def augment_image(img, rotate=True, shear=True, zoom=True, shift=True, gaussian_noice=True, save_path=None):
+    augmented_images = []
+
+    # Random rotation (plus minus 10 degrees)
+    rotated_image = rand_rotate(img)
+    rotated_image = rotated_image[..., np.newaxis]
+    augmented_images.append(rotated_image)
+
+    # Random shear
+    sheared_image = rand_shear(img)
+    sheared_image = cv2.resize(sheared_image, (img.shape[0], img.shape[1]))
+    sheared_image = sheared_image[..., np.newaxis]
+    augmented_images.append(sheared_image)
+
+    # Random zoom
+    resized_image = rand_zoom(img)
+    resized_image = resized_image[..., np.newaxis]
+    augmented_images.append(resized_image)
+
+    # Random shift
+    shifted_image = rand_translation(img)
+    shifted_image = shifted_image[..., np.newaxis]
+    augmented_images.append(shifted_image)
+
+    # Gaussian noise
+    noisy_image = rand_noise(img)
+    augmented_images.append(noisy_image)
+
+    # Save augmented images if specified
+    if save_path:
+        for i, augmented_image in enumerate(augmented_images):
+            save_image_path = save_path.format(i)
+            ndimage.imsave(save_image_path, augmented_image.squeeze())
+
+    #  plot_images(augmented_images, ['rotated', 'sheared', 'zoomed', 'shifted', 'gaussian noise'], title="Augmentation")
+    return augmented_images
+
+
+def convert_array_to_image_labels(image_path_array, image_width=150, image_height=150, augmented=False, genuine=False):
+    labels = []
+    image_array = []
+    for person in image_path_array:
+        for img in person:
+            img = convert_to_image(img)
+            image_array.append(img)
+            labels.append(1 if genuine else 0)
+            if augmented:
+                augmented_images = augment_image(img)
+                image_array.extend(augmented_images)
+                #augmented_images.append(img)
+                # augmented_labels = ['rotated', 'sheared', 'zoomed', 'shifted', 'gaussian noise', 'original']
+                # plot_images(augmented_images, image_array_label=augmented_labels, num_column=6,
+                #             title='Augmented images') #THIS ONLY FOR SHOWING PURPOSES
+                if genuine:
+                    labels.extend([1 for i in range(len(augmented_images))])
+                else:
+                    labels.extend([0 for i in range(len(augmented_images))])
+    # image_array = np.array(image_array)
+    # labels = np.array(labels, dtype=np.float32)
+    return image_array, labels
+
+
+def combine_orig_forg(orig_data, forg_data, orig_labels, forg_labels, shuffle=True):
+    data = orig_data + forg_data
+    labels = orig_labels + forg_labels
+    if shuffle:
+        data, labels = sklearn.utils.shuffle(data, labels, random_state=42)
+
+    return data, labels
+
+
+# CNN Loader
+def loader_for_cnn(data_dir=None, image_width=150, image_height=150, dataset='cedar'):
+    path_to_orig = 'data/genuine'
+    path_to_forg = 'data/forgery'
+
+    start_time = time.time()
+    # THIS IS OLD :]
+
+    # Tohle nahraje do listu, kde se obr8ykz nachazi
+    '''Tohle vraci array typu clovek[podpis1[], podpis2[]], clovek2[podpis1[], podpis2[]] tak na to nezapominej'''
+    # orig_train, orig_test, orig_val = create_for_tr_ts_val_data(path_to_orig, dataset=dataset)
+    # forg_train, forg_test, forg_val = create_for_tr_ts_val_data(path_to_forg, dataset=dataset)
+
+    # orig_train, orig_train_labels = convert_array_to_image_labels(orig_train, genuine=True,)
+    # orig_test, orig_test_labels = convert_array_to_image_labels(orig_test, genuine=True)
+    # orig_val, orig_val_labels = convert_array_to_image_labels(orig_val, genuine=True)
+    # forg_train, forg_train_labels = convert_array_to_image_labels(forg_train, genuine=False)
+    # forg_test, forg_test_labels = convert_array_to_image_labels(forg_test, genuine=False, augmented=True)
+    # forg_val, forg_val_labels = convert_array_to_image_labels(forg_val, genuine=False)
+
+    #
+    # train_data, train_labels = combine_orig_forg(orig_train, forg_train, orig_train_labels, forg_train_labels)
+    # test_data, test_labels = combine_orig_forg(orig_test, forg_test, orig_test_labels, forg_test_labels)
+    # val_data, val_labels = combine_orig_forg(orig_val, forg_val, orig_val_labels, forg_val_labels)
+
+    # print(f'Train dataset: {len(train_data)} and labels: {len(train_labels)}')
+    # print(f'Train dataset: {len(test_data)} and labels: {len(test_labels)}')
+    # print(f'Train dataset: {len(val_data)} and labels: {len(val_labels)}')
+
+    # train_data, train_labels = np.array(train_data), np.array(train_labels, dtype=np.float32)
+    # test_data, test_labels = np.array(test_data), np.array(test_labels, dtype=np.float32)
+    # val_data, val_labels = np.array(val_data), np.array(val_labels, dtype=np.float32)
+    # return train_data, train_labels, test_data, test_labels, val_data, val_labels
+
+    # THIS IS CURRENT :]
+    orig_data = create_data(path_to_orig, dataset=dataset)
+    forg_data = create_data(path_to_forg, dataset=dataset)
+    print(f'ORIG DATA: {len(orig_data)}')
+    print(f'FORG DATA: {len(forg_data)}')
+    orig_data, orig_labels = convert_array_to_image_labels(orig_data, genuine=True, augmented=True)
+    forg_data, forg_labels = convert_array_to_image_labels(forg_data, genuine=False, augmented=True)  # Moznost augmentace
+    print(f'ORIG DATA: {len(orig_data)}')
+    print(f'FORG DATA: {len(forg_data)}')
+    data, labels = combine_orig_forg(orig_data, forg_data, orig_labels, forg_labels)
+    print(f'Dataset: {len(data)} and labels: {len(labels)}')
+
+    data, labels = np.array(data), np.array(labels, dtype=np.float32)
+
+    end_time = time.time()
+    print(end_time - start_time)
+    return data, labels
+
+
+def tensor_loader_for_cnn(data_dir=None, image_width=200, image_height=200, batch_size=16):
     # mam tam osobni s dlouhym i takze musim solo zadat ze data
     if (not data_dir):
         data_dir = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data')
@@ -66,6 +317,7 @@ def loader_for_cnn(data_dir=None, image_width=200, image_height=200, batch_size=
         batch_size=batch_size,
         color_mode='grayscale',
         shuffle=True,
+
         # crop_to_aspect_ratio=True,
     )
     val_ds = tf.keras.utils.image_dataset_from_directory(
@@ -97,37 +349,6 @@ def loader_for_cnn(data_dir=None, image_width=200, image_height=200, batch_size=
 
 
 # SNN LOADER
-def create_snn_data(data_dir, dataset='cedar'):
-    num_classes = DATASET_NUM_CLASSES[dataset]
-    images = glob.glob(data_dir + '/*.png')
-    num_of_signatures = int(len(images) / num_classes) # this only works with Cedar
-    print(images)
-    # labels = []
-    persons = []
-    index = 0
-    for person in range(num_classes):
-        signatures = []
-        for signature in range(num_of_signatures):
-            signatures.append(images[index])
-            index += 1
-        persons.append(signatures)
-    train_data, test_data, val_data = persons[:43], persons[43:45], persons[45:]
-    print(train_data)
-    print(test_data)
-    print(val_data)
-    return train_data, test_data, val_data
-
-
-def convert_to_image(image_path, img_w=150, img_h=150):
-    img = Image.open(image_path)
-    img = img.resize((img_w, img_h))
-    img = img.convert('L')
-    img = img.point(lambda p: 255 if p > 200 else 0)  # Thresholding
-    img = img.convert('1')  # udela to to co chci??
-    img = np.array(img, dtype='float32')
-    img /= 255
-    img = img[..., np.newaxis]
-    return img
 
 
 def convert_pairs_to_image_pairs(pair_array, labels, img_w=150, img_h=150, output_size=0):
@@ -154,7 +375,6 @@ def convert_pairs_to_image_pairs(pair_array, labels, img_w=150, img_h=150, outpu
         image2 = convert_to_image(pair_array[i][1])
         image_pair_array.append((image1, image2))
         new_labels.append(labels[i])
-        index += 1
     del pair_array, labels
     return image_pair_array, new_labels
 
@@ -242,66 +462,72 @@ def visualize_snn_pair_sample(pair_array, label_array, title='Pair sample', nume
 
 
 def loader_for_snn(data_dir=None, train_size=6000, val_size=1500, test_size=500, image_width=200, image_height=200,
-                   dataset='cedar'):
+                   dataset='cedar', size=4000):
     path_to_orig = 'data/genuine'
     path_to_forg = 'data/forgery'
 
     start_time = time.time()
+    # ZASTARALE :]
+
     # Tohle nahraje do listu, kde se obr8ykz nachazi
     '''Tohle vraci array typu clovek[podpis1[], podpis2[]], clovek2[podpis1[], podpis2[]] tak na to nezapominej'''
-    orig_train, orig_test, orig_val = create_snn_data(path_to_orig, dataset=dataset)
-    forg_train, forg_test, forg_val = create_snn_data(path_to_forg, dataset=dataset)
+    # orig_train, orig_test, orig_val = create_for_tr_ts_val_data(path_to_orig, dataset=dataset)
+    # forg_train, forg_test, forg_val = create_for_tr_ts_val_data(path_to_forg, dataset=dataset)
 
     # visualize_snn_sample_signature(orig_train, forg_train)
 
-    print(f'ORIG TEST: {len(orig_test)}')
-    print(f'FORG TEST: {len(forg_test)}')
+    # print(f'ORIG TEST: {len(orig_test)}')
+    # print(f'FORG TEST: {len(forg_test)}')
 
     '''Tohle vraci array typu clovek[obrazek1[], obrazek2[]] a tak dale jak predtim tak na to kurva nezapominej'''
     # orig_val = convert_to_images(orig_val, True) #redundantni boolean smaz pak
     # forg_val = convert_to_images(forg_val, False)
-    print('___________________TESTOVACI SADA___________________')
-    test_pairs, test_labels = make_pairs(orig_test, forg_test)
-    print('___________________VYTVORENY PARY__________________')
-    test_pairs, test_labels = convert_pairs_to_image_pairs(test_pairs, test_labels, img_w=image_width,
-                                                           img_h=image_height, output_size=test_size)
-    print('___________________TRENOVACI SADA___________________')
-    train_pairs, train_labels = make_pairs(orig_train, forg_train)
-    print('___________________VYTVORENY PARY__________________')
-    train_pairs, train_labels = convert_pairs_to_image_pairs(train_pairs, train_labels, img_w=image_width,
-                                                             img_h=image_height, output_size=train_size)
-    print('___________________Validacni SADA___________________')
-    val_pairs, val_labels = make_pairs(orig_val, forg_val)
-    print('___________________VYTVORENY PARY__________________')
-    val_pairs, val_labels = convert_pairs_to_image_pairs(val_pairs, val_labels, img_w=image_width, img_h=image_height,
-                                                         output_size=val_size)
+    # print('___________________TESTOVACI SADA___________________')
+    # test_pairs, test_labels = make_pairs(orig_test, forg_test)
+    # print('___________________VYTVORENY PARY__________________')
+    # test_pairs, test_labels = convert_pairs_to_image_pairs(test_pairs, test_labels, img_w=image_width,
+    #                                                        img_h=image_height, output_size=test_size)
+    # print('___________________TRENOVACI SADA___________________')
+    # train_pairs, train_labels = make_pairs(orig_train, forg_train)
+    # print('___________________VYTVORENY PARY__________________')
+    # train_pairs, train_labels = convert_pairs_to_image_pairs(train_pairs, train_labels, img_w=image_width,
+    #                                                          img_h=image_height, output_size=train_size)
+    # print('___________________Validacni SADA___________________')
+    # val_pairs, val_labels = make_pairs(orig_val, forg_val)
+    # print('___________________VYTVORENY PARY__________________')
+    # val_pairs, val_labels = convert_pairs_to_image_pairs(val_pairs, val_labels, img_w=image_width, img_h=image_height,
+    #                                                      output_size=val_size)
 
+    # print(f'Trenovaci sada: {len(train_pairs)} , labels: {len(train_labels)} and shape = {train_pairs[0][0].shape}')
+    # print(f'Testovaci sada: {len(test_pairs)}, labels: {len(test_labels)} and shape = {train_pairs[0][0].shape}')
+    # print(f'Validacni sada: {len(val_pairs)} , labels: {len(val_labels)} and shape = {train_pairs[0][0].shape}')
+
+    # visualize_snn_pair_sample(train_pairs, train_labels, title='Train pairs', numer_of_samples=5)
+    # visualize_snn_pair_sample(test_pairs, test_labels, title='Test pairs', numer_of_samples=1)
+    # visualize_snn_pair_sample(val_pairs, val_labels, title='Validation pairs', numer_of_samples=2)
+
+    # train_pairs, train_labels = np.array(train_pairs), np.array(train_labels, dtype=np.float32)
+    # test_pairs, test_labels = np.array(test_pairs), np.array(test_labels, dtype=np.float32)
+    # val_pairs, val_labels = np.array(val_pairs), np.array(val_labels, dtype=np.float32)
+    #
+    # return train_pairs, train_labels, test_pairs, test_labels, val_pairs, val_labels
+
+    # NOVE :]
+    orig_data = create_data(path_to_orig, dataset=dataset)
+    forg_data = create_data(path_to_forg, dataset=dataset)
+    print(f'ORIG : {len(orig_data)}')
+    print(f'FORG : {len(forg_data)}')
+
+    print('___________________VYTVARENI PARU__________________')
+    data_pairs, data_labels = make_pairs(orig_data, forg_data)
+    print('___________________Nacteni Obrazku__________________')
+    data_pairs, data_labels = convert_pairs_to_image_pairs(data_pairs, data_labels, img_w=image_width,
+                                                           img_h=image_height,
+                                                           output_size=size)
     print('_____________________HOTOVO__________________________________')
     end_time = time.time()
     print(f'trvalo to : {end_time - start_time}')
-    print(f'Trenovaci sada: {len(train_pairs)} , labels: {len(train_labels)} and shape = {train_pairs[0][0].shape}')
-    print(f'Testovaci sada: {len(test_pairs)}, labels: {len(test_labels)} and shape = {train_pairs[0][0].shape}')
-    print(f'Validacni sada: {len(val_pairs)} , labels: {len(val_labels)} and shape = {train_pairs[0][0].shape}')
-
-    visualize_snn_pair_sample(train_pairs, train_labels, title='Train pairs', numer_of_samples=5)
-    visualize_snn_pair_sample(test_pairs, test_labels, title='Test pairs', numer_of_samples=1)
-    visualize_snn_pair_sample(val_pairs, val_labels, title='Validation pairs', numer_of_samples=2)
-
-    # orig_set = create_data(path_to_orig, dataset=dataset)
-    # orig_train, orig_test, orig_val = orig_set[0], orig_set[1], orig_set[2]
-    # del orig_set
-    # forg_set = create_data(path_to_forg, dataset=dataset)
-    # forg_train, forg_test, forg_val = forg_set[0], forg_set[1], forg_set[2]
-    # del forg_set
-
-    # visualize_snn_sample_signature(orig_train, forg_train)
-
-    print('ending the story')
-    #
-    # batch = generate_snn_batch(orig_train, forg_train, batch_size=batch_size)
-    # print(batch)
-    train_pairs, train_labels = np.array(train_pairs), np.array(train_labels, dtype=np.float32)
-    test_pairs, test_labels = np.array(test_pairs), np.array(test_labels, dtype=np.float32)
-    val_pairs, val_labels = np.array(val_pairs), np.array(val_labels, dtype=np.float32)
-
-    return train_pairs, train_labels, test_pairs, test_labels, val_pairs, val_labels
+    print(f'Trenovaci sada: {len(data_pairs)} , labels: {len(data_labels)} and shape = {data_pairs[0][0].shape}')
+    visualize_snn_pair_sample(data_pairs, data_labels, title='Data pairs', numer_of_samples=5)
+    data_pairs, data_labels = np.array(data_pairs), np.array(data_labels, dtype=np.float32)
+    return data_pairs, data_labels

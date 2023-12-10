@@ -1,6 +1,7 @@
 from keras import backend as K
 import numpy as np
-from keras.callbacks import EarlyStopping, ModelCheckpoint, ReduceLROnPlateau
+import tensorflow as tf
+from keras.callbacks import EarlyStopping, ModelCheckpoint, ReduceLROnPlateau, LearningRateScheduler
 
 
 
@@ -43,10 +44,25 @@ def compute_accuracy_roc(predictions, labels):
 
 def compute_accuracy_roc(predictions, labels):
     return labels[predictions.ravel() < 0.5].mean()
-def callbacks():
+
+
+def callbacks_Stop_checkpoint():
     callbacks = [
         EarlyStopping(patience=12, verbose=1),
         ReduceLROnPlateau(factor=0.1, patience=5, min_lr=0.000001, verbose=1),
-        ModelCheckpoint('./models/SNN_CEDAR-{epoch:03d}.h5', verbose=1, save_weights_only=True)
+        ModelCheckpoint('./models/SNN_CEDAR-{epoch:03d}.h5', verbose=12, save_weights_only=True)
     ]
     return callbacks
+
+def scheduler(epoch, lr):
+    if epoch < 10:
+         return lr
+    else:
+         return lr * tf.math.exp(-0.1)
+
+def callbacks_schelude_lr():
+
+    callback = [
+        LearningRateScheduler(scheduler, verbose=1)
+    ]
+    return callback
