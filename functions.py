@@ -60,9 +60,18 @@ def scheduler(epoch, lr):
     else:
          return lr * tf.math.exp(-0.1)
 
-def callbacks_schelude_lr():
+def CSVLogger(filename):
+
+    logger = tf.keras.callbacks.CSVLogger(
+        filename, separator=',', append=True
+    )
+    return logger
+
+
+def callbacks_schelude_lr(filename):
 
     callback = [
-        LearningRateScheduler(scheduler, verbose=1)
+        LearningRateScheduler(scheduler, verbose=1),
+        CSVLogger(filename)
     ]
     return callback

@@ -45,7 +45,8 @@ def plot_images(image_array, image_array_label=[], num_column=5, title='Images i
         if image_array_label != []:
             ax.set_title(image_array_label[index])
             index += 1
-        ax.axis('off')
+        #ax.axis('off')
+
     fig.suptitle(title, fontsize=16)
     plt.tight_layout()
     plt.show(block=True)
@@ -56,7 +57,7 @@ def create_for_tr_ts_val_data(data_dir, dataset='cedar'):
     num_classes = DATASET_NUM_CLASSES[dataset]
     images = glob.glob(data_dir + '/*.png')
     num_of_signatures = int(len(images) / num_classes)  # this only works with Cedar
-    print(images)
+    #print(images)
     # labels = []
     persons = []
     index = 0
@@ -67,9 +68,9 @@ def create_for_tr_ts_val_data(data_dir, dataset='cedar'):
             index += 1
         persons.append(signatures)
     train_data, test_data, val_data = persons[:43], persons[43:45], persons[45:]
-    print(train_data)
-    print(test_data)
-    print(val_data)
+    #print(train_data)
+    #print(test_data)
+    #print(val_data)
     return train_data, test_data, val_data
 
 
@@ -77,7 +78,7 @@ def create_data(data_dir, dataset='cedar'):
     num_classes = DATASET_NUM_CLASSES[dataset]
     images = glob.glob(data_dir + '/*.png')
     num_of_signatures = int(len(images) / num_classes)  # this only works with Cedar
-    print(images)
+    #print(images)
     persons = []
     index = 0
     for person in range(num_classes):
@@ -97,7 +98,6 @@ def convert_to_image(image_path, img_w=150, img_h=150):
     img = img.point(lambda p: 255 if p > 210 else 0)  # Thresholding
     img = img.convert('1')  # udela to to co chci??
     img = np.array(img, dtype='float32')
-    #img /= 255
     img = img[..., np.newaxis]
     return img
 
@@ -119,9 +119,7 @@ def rand_rotate(imag):
             angle = -20
 
     matrix = cv2.getRotationMatrix2D((w / 2, h / 2), angle, 1.0)  # center cx, cy = w/2 h/2
-    img = cv2.warpAffine(img, matrix, (w, h), borderMode=cv2.BORDER_CONSTANT, borderValue=(1,1,1)
-                         #borderMode=cv2.BORDER_REPLICATE
-                         )
+    img = cv2.warpAffine(img, matrix, (w, h), borderMode=cv2.BORDER_CONSTANT, borderValue=(1,1,1))
     return img
 
 
@@ -215,7 +213,7 @@ def augment_image(img, rotate=True, shear=True, zoom=True, shift=True, gaussian_
     return augmented_images
 
 
-def convert_array_to_image_labels(image_path_array, image_width=150, image_height=150, augmented=False, genuine=False):
+def convert_array_to_image_labels(image_path_array, image_width=150, image_height=150, augmented=False, genuine=False, size=None):
     labels = []
     image_array = []
     for person in image_path_array:
@@ -226,16 +224,26 @@ def convert_array_to_image_labels(image_path_array, image_width=150, image_heigh
             if augmented:
                 augmented_images = augment_image(img)
                 image_array.extend(augmented_images)
-                #augmented_images.append(img)
-                # augmented_labels = ['rotated', 'sheared', 'zoomed', 'shifted', 'gaussian noise', 'original']
-                # plot_images(augmented_images, image_array_label=augmented_labels, num_column=6,
-                #             title='Augmented images') #THIS ONLY FOR SHOWING PURPOSES
+                #augmented_images.insert(0,img)
+                #augmented_labels = ['Původní', 'Otočený', 'Smýknutý', 'Přiblížený/Oddálený', 'Posunutý', 'Ss šumem']
+                #plot_images(augmented_images,  num_column=6,
+                #            title='Upravené obrázky') #THIS ONLY FOR SHOWING PURPOSES
                 if genuine:
                     labels.extend([1 for i in range(len(augmented_images))])
                 else:
                     labels.extend([0 for i in range(len(augmented_images))])
     # image_array = np.array(image_array)
     # labels = np.array(labels, dtype=np.float32)
+    if size:
+        image_sized_array = []
+        label_sized_array = []
+        rng = np.random.default_rng();
+        indieces = rng.choice(len(image_array), size=size, replace=False, shuffle=True)
+        for i in indieces:
+            image = image_array[i]
+            image_sized_array.append(image)
+            label_sized_array.append(labels[i])
+        return image_sized_array, label_sized_array
     return image_array, labels
 
 
@@ -249,7 +257,7 @@ def combine_orig_forg(orig_data, forg_data, orig_labels, forg_labels, shuffle=Tr
 
 
 # CNN Loader
-def loader_for_cnn(data_dir=None, image_width=150, image_height=150, dataset='cedar'):
+def loader_for_cnn(data_dir=None, image_width=150, image_height=150, dataset='cedar', augmented=False, size=None):
     path_to_orig = 'data/genuine'
     path_to_forg = 'data/forgery'
 
@@ -287,8 +295,8 @@ def loader_for_cnn(data_dir=None, image_width=150, image_height=150, dataset='ce
     forg_data = create_data(path_to_forg, dataset=dataset)
     print(f'ORIG DATA: {len(orig_data)}')
     print(f'FORG DATA: {len(forg_data)}')
-    orig_data, orig_labels = convert_array_to_image_labels(orig_data, genuine=True, augmented=True)
-    forg_data, forg_labels = convert_array_to_image_labels(forg_data, genuine=False, augmented=True)  # Moznost augmentace
+    orig_data, orig_labels = convert_array_to_image_labels(orig_data, genuine=True, augmented=augmented, size=size)
+    forg_data, forg_labels = convert_array_to_image_labels(forg_data, genuine=False, augmented=augmented, size=size)  # Moznost augmentace
     print(f'ORIG DATA: {len(orig_data)}')
     print(f'FORG DATA: {len(forg_data)}')
     data, labels = combine_orig_forg(orig_data, forg_data, orig_labels, forg_labels)
@@ -341,10 +349,10 @@ def tensor_loader_for_cnn(data_dir=None, image_width=200, image_height=200, batc
 
     print('??????????????????__________________________________________?????????????????????')
 
-    iterator = iter(train_ds)
-    sample_of_train_dataset, _ = next(iterator)
+    #iterator = iter(train_ds)
+    #sample_of_train_dataset, _ = next(iterator)
 
-    plot_images(sample_of_train_dataset[:5])
+    #plot_images(sample_of_train_dataset[:5])
     return train_ds, val_ds
 
 
@@ -458,7 +466,7 @@ def visualize_snn_pair_sample(pair_array, label_array, title='Pair sample', nume
         pairs.append([img1, img2])
         label.append(['Geunine', 'Genuine' if label_array[k] == 1 else 'Forgery'])
 
-    show_pair(pairs, label, title=title, columns=2, rows=numer_of_samples)
+    #show_pair(pairs, label, title=title, columns=2, rows=numer_of_samples)
 
 
 def loader_for_snn(data_dir=None, train_size=6000, val_size=1500, test_size=500, image_width=200, image_height=200,
@@ -528,6 +536,6 @@ def loader_for_snn(data_dir=None, train_size=6000, val_size=1500, test_size=500,
     end_time = time.time()
     print(f'trvalo to : {end_time - start_time}')
     print(f'Trenovaci sada: {len(data_pairs)} , labels: {len(data_labels)} and shape = {data_pairs[0][0].shape}')
-    visualize_snn_pair_sample(data_pairs, data_labels, title='Data pairs', numer_of_samples=5)
+    #visualize_snn_pair_sample(data_pairs, data_labels, title='Data pairs', numer_of_samples=5)
     data_pairs, data_labels = np.array(data_pairs), np.array(data_labels, dtype=np.float32)
     return data_pairs, data_labels
