@@ -1,4 +1,4 @@
-#Verification signature using Neural Network
+# Verification signature using Neural Network
 This program is trying to verificate signatures with usage of two methods using neural network.
 ## Instalation
 Program is installed by downloading the code(or cloning) and installng requirments.txt. Then running python main.py. 
