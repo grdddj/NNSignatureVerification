@@ -1,7 +1,7 @@
 # Verification signature using Neural Network
-This program is trying to verificate signatures with usage of two methods using neural network.
+This program is trying to verificate offline signatures with usage of two methods using neural network.
 ## Instalation
-Program is installed by downloading the code(or cloning) and installng requirments.txt. Then running python main.py. 
+Program is installed by downloading the code (or cloning) and installng requirments.txt. Create data folder and download there a Cedar dataset. Then running python main.py. 
 ## Files in program
 ### Data
 In data folder download CEDAR dataset.
