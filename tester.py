@@ -17,12 +17,15 @@ def test_model(datadir= "fromServer"):
     width = int(input("Image width: "))
     height = int(input("Image height: "))
 
+
     model = load_model(modelPath)
 
     if isSnn == 1:
-        data, labels = loader.loader_for_cnn(image_width=width, image_height=height, augmented=False, size=numTestSamples)
+        numTestSamples = int(numTestSamples / 2)
+        data, labels = loader.loader_for_cnn(data_dir='tester',image_width=width, image_height=height, augmented=False, size=numTestSamples, dataset='test')
     else:
-        pairs, labels = loader.loader_for_snn(image_width=width,image_height=height, size=numTestSamples)
+        print(numTestSamples)
+        pairs, labels = loader.loader_for_snn(data_dir='tester',image_width=width,image_height=height, size=numTestSamples, dataset='test')
     isEval = 200
     while isEval != -1:
         isEval = int(input("Evaluate(0) or predict(1) or end(-1): "))
@@ -34,10 +37,11 @@ def test_model(datadir= "fromServer"):
             print(f'test loss and acc = {result}')
         elif isEval == 1:
             numOfPred = int(input("Number of predictions: "))
-            new_data = pairs[:numOfPred]
             if isSnn == 0:
-                prediction = model.predict([new_data[:, 0, :,:], new_data[:,1,:,:]])
+                new_pairs = pairs[:numOfPred]
+                prediction = model.predict([new_pairs[:, 0, :,:], new_pairs[:,1,:,:]])
             else:
+                new_data = data[:numOfPred]
                 prediction = model.predict(new_data)
             print(f'prediction shape: {prediction.shape}')
             for i in range(len(prediction)):

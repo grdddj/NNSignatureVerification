@@ -158,17 +158,81 @@ def snn_base_cnn_model(image_shape=(100 , 100, 1)):
     return model
 
 
+#Local X normal features
+def cnn_local_features(image_shape=(100,100,1)):
+    num_conv_filters = 16  # pocet conv. filtru
+    max_pool_size = (2, 2)  # velikost maxpool filtru
+    conv_kernel_size = (3, 3)  # velikost conv. filtru
+    imag_shape = image_shape  # vlastnosti obrazku
+    dropout_prob = 0.25  # pravdepodobnost odstraneni neuronu
+    model = Sequential()
+    #Layer 1
+    model.add(Conv2D(filters=num_conv_filters, kernel_size=conv_kernel_size, input_shape=imag_shape, activation="relu"))
+    model.add(MaxPool2D(max_pool_size))
+    model.add(Dropout(dropout_prob))
+    #Layer 2
+    model.add(Conv2D(filters=num_conv_filters, kernel_size=conv_kernel_size, activation="relu"))
+    model.add(MaxPool2D(max_pool_size))
+    model.add(Dropout(dropout_prob))
+    #Connected Layer
+    model.add(Flatten())
+    model.add(Dense(64, activation="relu"))
+    return model
+
+
+
+# TODO delete cause REdundant
+# def cnn_procces_local(patch_size=10, image_shape=(100,100,1)):
+#     patch_inputs = [Input(shape=image_shape) for i in range(patch_size)]
+#     cnn_base_network = cnn_local_features(image_shape=image_shape)
+#     patch_outputs = [cnn_base_network(patch_input) for patch_input in patch_inputs]
+#     concat = Concatenate()(patch_outputs)
+#     dense = Dense(128, activation="relu")(concat)
+#     return Model(inputs=patch_inputs, outputs=dense)
+
+
+
+
+
+
 def snn_model(image_shape=(100, 100, 1)):
     base_network = snn_base_cnn_model(image_shape)
     image1 = Input(shape=(image_shape))
     print(f'\nshape of im1 is {image1.shape}' )
     image2 = Input(shape=(image_shape))
     print(f'\nshape of im2 is {image2.shape}')
+
+    # Nahrání obrázků a předzpracování skrze CNN
     preprocessed_image1 = base_network(image1)
     print(preprocessed_image1.shape)
     preprocessed_image2 = base_network(image2)
     print(preprocessed_image2.shape)
 
+    # Pro nahrání počtu tahů
+    #um_strokes1 = Input(shape=(1,), name='num_strokes1')
+    #num_strokes2 = Input(shape=(1,), name='num_strokes2')
+    #concat = Concatenate()([preprocessed_image1, preprocessed_image2, num_strokes1, num_strokes2])
+
+    #Pro užití lokálních příznaků
+    #Define num_patches
+    # num_patches = 10
+    # patch_inputs_image1 = [Input(shape=image_shape, name=f'patch_input_image1_{i}') for i in range(num_patches)]
+    # patch_inputs_image2 = [Input(shape=image_shape, name=f'patch_input_image2_{i}') for i in range(num_patches)]
+    # cnn_base_local_network = cnn_local_features(image_shape=image_shape)
+    # local_patch_outputs_image1 = [cnn_base_local_network(patch_input) for patch_input in patch_inputs_image1]
+    # local_patch_outputs_image2 = [cnn_base_local_network(patch_input) for patch_input in patch_inputs_image2]
+    # concat_img1 = Concatenate()(local_patch_outputs_image1) #for patch 1
+    # concat_img2 = Concatenate()(local_patch_outputs_image2) #for patch 2
+    # concat_img1 = Concatenate()([preprocessed_image1, concat_img1])
+    # concat_img2 = Concatenate()([preprocessed_image2, concat_img2])
+    # concat = Concatenate()(concat_img1, concat_img2)
+
+
+    # Pro nahrání dfalších feature .... obdobně nezapomenout upravit input na konci teto funkce p5i compile
+
+
+
+    # Určení vzdálenosti od dvou obrázků
     #distance = Lambda(euclidan_distance, output_shape=euclidan_dist_output_shape)([preprocessed_image1, preprocessed_image2])
     #model = Model(inputs=[image1, image2], outputs=distance)
     #rms = RMSprop(learning_rate=1e-4, rho=0.9, epsilon=1e-08)
@@ -190,3 +254,7 @@ def snn_model(image_shape=(100, 100, 1)):
 #     Model = cnn_model()
 #     Model.build((None,200,200,1))
 #     Model.summary()
+
+
+def snn_model_with_strokes():
+    return

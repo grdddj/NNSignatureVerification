@@ -25,6 +25,7 @@ import tensorflow_datasets as tfds
 IMAGE_TYPES = ['jpeg', 'png', 'bmp', 'png']
 DATASET_NUM_CLASSES = {
     'cedar': 55,
+    'test':1,
 }
 
 
@@ -78,6 +79,7 @@ def create_data(data_dir, dataset='cedar'):
     num_classes = DATASET_NUM_CLASSES[dataset]
     images = glob.glob(data_dir + '/*.png')
     num_of_signatures = int(len(images) / num_classes)  # this only works with Cedar
+    if num_of_signatures == 0: num_of_signatures = 1
     #print(images)
     persons = []
     index = 0
@@ -96,7 +98,7 @@ def convert_to_image(image_path, img_w=150, img_h=150):
     img = img.resize((img_w, img_h))
     img = img.convert('L')
     img = img.point(lambda p: 255 if p > 210 else 0)  # Thresholding
-    img = img.convert('1')  # udela to to co chci??
+    img = img.convert('1')  # udela to to co chci?? ANO
     img = np.array(img, dtype='float32')
     img = img[..., np.newaxis]
     return img
@@ -257,9 +259,10 @@ def combine_orig_forg(orig_data, forg_data, orig_labels, forg_labels, shuffle=Tr
 
 
 # CNN Loader
-def loader_for_cnn(data_dir=None, image_width=150, image_height=150, dataset='cedar', augmented=False, size=None):
-    path_to_orig = 'data/genuine'
-    path_to_forg = 'data/forgery'
+def loader_for_cnn(data_dir="data", image_width=150, image_height=150, dataset='cedar', augmented=False, size=None):
+
+    path_to_orig = data_dir +'/genuine'
+    path_to_forg = data_dir +'/forgery'
 
     start_time = time.time()
     # THIS IS OLD :]
@@ -407,11 +410,11 @@ def make_pairs(orig_data, forg_data):
     print(len(data_pairs))
     print(len(label_pairs))
     print('testing accuracy')
-    for i in range(5):
-        num = np.random.randint(0, len(data_pairs))
-        testing_pair = data_pairs[num]
-        print(len(testing_pair))
-        print(f'{testing_pair[0]} , {testing_pair[1]} = {label_pairs[num]}')
+    # for i in range(5):
+    #     num = np.random.randint(0, len(data_pairs))
+    #     testing_pair = data_pairs[num]
+    #     print(len(testing_pair))
+    #     print(f'{testing_pair[0]} , {testing_pair[1]} = {label_pairs[num]}')
     return data_pairs, label_pairs
 
 
@@ -469,58 +472,16 @@ def visualize_snn_pair_sample(pair_array, label_array, title='Pair sample', nume
     #show_pair(pairs, label, title=title, columns=2, rows=numer_of_samples)
 
 
-def loader_for_snn(data_dir=None, train_size=6000, val_size=1500, test_size=500, image_width=200, image_height=200,
+def loader_for_snn(data_dir='data', train_size=6000, val_size=1500, test_size=500, image_width=200, image_height=200,
                    dataset='cedar', size=4000):
-    path_to_orig = 'data/genuine'
-    path_to_forg = 'data/forgery'
+    path_to_orig = data_dir + '/genuine'
+    path_to_forg = data_dir + '/forgery'
+
+    print(path_to_orig)
+    print(path_to_forg)
 
     start_time = time.time()
-    # ZASTARALE :]
 
-    # Tohle nahraje do listu, kde se obr8ykz nachazi
-    '''Tohle vraci array typu clovek[podpis1[], podpis2[]], clovek2[podpis1[], podpis2[]] tak na to nezapominej'''
-    # orig_train, orig_test, orig_val = create_for_tr_ts_val_data(path_to_orig, dataset=dataset)
-    # forg_train, forg_test, forg_val = create_for_tr_ts_val_data(path_to_forg, dataset=dataset)
-
-    # visualize_snn_sample_signature(orig_train, forg_train)
-
-    # print(f'ORIG TEST: {len(orig_test)}')
-    # print(f'FORG TEST: {len(forg_test)}')
-
-    '''Tohle vraci array typu clovek[obrazek1[], obrazek2[]] a tak dale jak predtim tak na to kurva nezapominej'''
-    # orig_val = convert_to_images(orig_val, True) #redundantni boolean smaz pak
-    # forg_val = convert_to_images(forg_val, False)
-    # print('___________________TESTOVACI SADA___________________')
-    # test_pairs, test_labels = make_pairs(orig_test, forg_test)
-    # print('___________________VYTVORENY PARY__________________')
-    # test_pairs, test_labels = convert_pairs_to_image_pairs(test_pairs, test_labels, img_w=image_width,
-    #                                                        img_h=image_height, output_size=test_size)
-    # print('___________________TRENOVACI SADA___________________')
-    # train_pairs, train_labels = make_pairs(orig_train, forg_train)
-    # print('___________________VYTVORENY PARY__________________')
-    # train_pairs, train_labels = convert_pairs_to_image_pairs(train_pairs, train_labels, img_w=image_width,
-    #                                                          img_h=image_height, output_size=train_size)
-    # print('___________________Validacni SADA___________________')
-    # val_pairs, val_labels = make_pairs(orig_val, forg_val)
-    # print('___________________VYTVORENY PARY__________________')
-    # val_pairs, val_labels = convert_pairs_to_image_pairs(val_pairs, val_labels, img_w=image_width, img_h=image_height,
-    #                                                      output_size=val_size)
-
-    # print(f'Trenovaci sada: {len(train_pairs)} , labels: {len(train_labels)} and shape = {train_pairs[0][0].shape}')
-    # print(f'Testovaci sada: {len(test_pairs)}, labels: {len(test_labels)} and shape = {train_pairs[0][0].shape}')
-    # print(f'Validacni sada: {len(val_pairs)} , labels: {len(val_labels)} and shape = {train_pairs[0][0].shape}')
-
-    # visualize_snn_pair_sample(train_pairs, train_labels, title='Train pairs', numer_of_samples=5)
-    # visualize_snn_pair_sample(test_pairs, test_labels, title='Test pairs', numer_of_samples=1)
-    # visualize_snn_pair_sample(val_pairs, val_labels, title='Validation pairs', numer_of_samples=2)
-
-    # train_pairs, train_labels = np.array(train_pairs), np.array(train_labels, dtype=np.float32)
-    # test_pairs, test_labels = np.array(test_pairs), np.array(test_labels, dtype=np.float32)
-    # val_pairs, val_labels = np.array(val_pairs), np.array(val_labels, dtype=np.float32)
-    #
-    # return train_pairs, train_labels, test_pairs, test_labels, val_pairs, val_labels
-
-    # NOVE :]
     orig_data = create_data(path_to_orig, dataset=dataset)
     forg_data = create_data(path_to_forg, dataset=dataset)
     print(f'ORIG : {len(orig_data)}')
@@ -535,7 +496,7 @@ def loader_for_snn(data_dir=None, train_size=6000, val_size=1500, test_size=500,
     print('_____________________HOTOVO__________________________________')
     end_time = time.time()
     print(f'trvalo to : {end_time - start_time}')
-    print(f'Trenovaci sada: {len(data_pairs)} , labels: {len(data_labels)} and shape = {data_pairs[0][0].shape}')
+    print(f'Data: {len(data_pairs)} , labels: {len(data_labels)} and shape = {data_pairs[0][0].shape}')
     #visualize_snn_pair_sample(data_pairs, data_labels, title='Data pairs', numer_of_samples=5)
     data_pairs, data_labels = np.array(data_pairs), np.array(data_labels, dtype=np.float32)
     return data_pairs, data_labels

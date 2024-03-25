@@ -1,13 +1,26 @@
+import matplotlib.pyplot as plt
 from keras import backend as K
 import numpy as np
 import tensorflow as tf
+import pywt
+import cv2
 from keras.callbacks import EarlyStopping, ModelCheckpoint, ReduceLROnPlateau, LearningRateScheduler
 
 
+def get_image_strokes(img):
+    _, inverted_image = cv2.threshold(img, 0.5, 1, cv2.THRESH_BINARY_INV)
+    inverted_image = np.array(inverted_image, dtype=np.uint8)
+    contours, _ = cv2.findContours(inverted_image, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    strokes = len(contours)
+    return strokes
+
+def show_single_image(img):
+    plt.imshow(img, cmap="gray")
+    plt.axis("off")
+    plt.show(block=True)
 
 
-
-
+#Euclidan distance
 def euclidan_distance(vectors):
     assert len(vectors) == 2, 'needs exactly 2 vectors but %d was give' % len(vectors)
     x,y = vectors
@@ -75,3 +88,48 @@ def callbacks_schelude_lr(filename):
         CSVLogger(filename)
     ]
     return callback
+
+# Funkce na získání více
+
+#Local features
+def image_for_local(image):
+    small_image_array = []
+    size = 10
+    for row in range(0, image.shape, size):
+        for col in range(0, image.shape, size):
+            small_image = image[row:row+size, col:col+size]
+            small_image_array.append(small_image)
+    small_image_array = np.array(small_image, dtype="float32")
+    return small_image_array
+
+#Vlnková transformace
+def wavelet_transformation(image):
+    coeffs = pywt.dwt2(data=image, wavelet='bior1.3') # zkus všechny další experiment: haar, db2, bior1.3, sym, coif (https://pywavelets.readthedocs.io/en/latest/regression/wavelet.html)
+    cA, (cH, cV, cD) = coeffs
+
+    #normalizace
+    cA = (cA - cA.min()) / (cA.max() - cA.min())
+    cH = (cH - cH.min()) / (cH.max() - cH.min())
+    #Prahování
+    #_, cA = cv2.threshold(cA, 0.1, 1, cv2.THRESH_BINARY)
+    #_, cH = cv2.threshold(cH, 0.1, 1, cv2.THRESH_BINARY)
+    # CV a CD Nejsou potreba nic se na nich nestane nebo jsem lopata
+
+    #Udělání jedné featury
+    cA = cA.flatten()
+    cH = cH.flatten()
+    wavelet_features = np.concatenate((cA,cH))
+    return wavelet_features
+
+#geometric features?
+
+# Maximum horizontal and vertical histogram,
+
+# Center of mass, Normalized area ,Aspect Ratio, Tri surface feature,six fold surface feature and Transition feature
+
+# morphological features
+
+
+
+
+
