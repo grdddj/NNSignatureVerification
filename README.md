@@ -12,6 +12,6 @@ Contains model architecture.
 ### loader.py
 Includes dataloaders, and augmentation functions
 ### functions.py
-Contains supportive functions for models and loader such as callbacks
+Contains supportive functions for models and loader such as callbacks, additional feature extractions
 ### tester.py
 Contains functions for testing trained models.
