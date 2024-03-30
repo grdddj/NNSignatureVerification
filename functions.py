@@ -1,4 +1,5 @@
 import matplotlib.pyplot as plt
+from PIL import Image
 from keras import backend as K
 import numpy as np
 import tensorflow as tf
@@ -6,13 +7,6 @@ import pywt
 import cv2
 from keras.callbacks import EarlyStopping, ModelCheckpoint, ReduceLROnPlateau, LearningRateScheduler
 
-
-def get_image_strokes(img):
-    _, inverted_image = cv2.threshold(img, 0.5, 1, cv2.THRESH_BINARY_INV)
-    inverted_image = np.array(inverted_image, dtype=np.uint8)
-    contours, _ = cv2.findContours(inverted_image, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-    strokes = len(contours)
-    return strokes
 
 def show_single_image(img):
     plt.imshow(img, cmap="gray")
@@ -89,7 +83,14 @@ def callbacks_schelude_lr(filename):
     ]
     return callback
 
-# Funkce na získání více
+# Funkce na získání více pocet tahu
+def get_image_strokes(img):
+    _, inverted_image = cv2.threshold(img, 0.5, 1, cv2.THRESH_BINARY_INV)
+    inverted_image = np.array(inverted_image, dtype=np.uint8)
+    contours, _ = cv2.findContours(inverted_image, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    strokes = len(contours)
+    return strokes
+
 
 #Local features
 def image_for_local(image):
@@ -123,7 +124,73 @@ def wavelet_transformation(image):
 
 #geometric features?
 
-# Maximum horizontal and vertical histogram,
+# Histogram //TODO FUUUUUUCK
+def calculate_histogram(image):
+    _, image = cv2.threshold(image, 0.5, 1, cv2.THRESH_BINARY_INV)
+    image *= 255
+    image = np.array(image, dtype=np.uint8)
+    # show_single_image(image)
+
+    #hist, bins = np.histogram(image)
+    hist = cv2.calcHist([image], [0], None, [256], [0,256])
+    #hist = hist.squeeze()
+    #hist.astype(np.int64)
+    hist /= hist.sum()
+
+    plt.plot(hist)
+    plt.show(block=True)
+
+    cdf = np.cumsum(hist)
+
+    # Plot CDF
+    plt.plot( cdf)
+    plt.title('Cumulative Distribution Function (CDF)')
+    plt.xlabel('Pixel Value')
+    plt.ylabel('Cumulative Probability')
+    plt.xlim(0, 255)
+    plt.ylim(0, 1)
+    plt.show(block=True)
+    return cdf
+
+
+
+
+
+# Count of pixels and representation of count of pixel upon y and x axis:
+def plot_non_white_pixels(non_white_pixels_rows, non_white_pixels_columns):
+    # Plot non-white pixels in rows
+    plt.figure(figsize=(10, 5))
+    plt.subplot(1, 2, 1)
+    plt.plot(non_white_pixels_rows, range(len(non_white_pixels_rows)), color='blue')
+    plt.title('Non-white Pixels in Rows')
+    plt.xlabel('Count')
+    plt.ylabel('Row Index')
+    plt.gca().invert_yaxis()  # Invert y-axis to match image orientation
+
+    # Plot non-white pixels in columns
+    plt.subplot(1, 2, 2)
+    plt.plot(range(len(non_white_pixels_columns)), non_white_pixels_columns, color='red')
+    plt.title('Non-white Pixels in Columns')
+    plt.xlabel('Column Index')
+    plt.ylabel('Count')
+
+    plt.tight_layout()
+    plt.show(block=True)
+
+
+
+
+
+def count_none_white_pixels(image, count_axis=False):
+    pixel_count = np.sum(image == 0)
+    if count_axis:
+        non_white_pixels_rows = np.sum(image == 0, axis=1)
+        non_white_pixels_columns = np.sum(image == 0, axis=0)
+        plot_non_white_pixels(non_white_pixels_rows, non_white_pixels_columns)
+        return pixel_count, non_white_pixels_rows, non_white_pixels_columns
+    return pixel_count
+
+
 
 # Center of mass, Normalized area ,Aspect Ratio, Tri surface feature,six fold surface feature and Transition feature
 
