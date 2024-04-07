@@ -6,6 +6,7 @@ import keras
 import PIL
 from keras import backend
 from keras import layers, models
+import tensorflow as tf
 from keras.backend import relu, sigmoid
 # True imports
 from tensorflow.keras.models import Sequential, Model
@@ -17,9 +18,63 @@ import functions
 from functions import euclidan_distance, euclidan_dist_output_shape
 from keras.optimizers import SGD, RMSprop, Adadelta
 
+# gradcam model:
+# def gradcam_heatmap(image, used_model, layer_name, positive_class=True, preprocess_input_function=None, normalize=True):
+#     # preprocess may be redundant /TODO check its all wrong?
+#     image = tf.convert_to_tensor(image)
+#     if preprocess_input_function is not None:
+#         image = preprocess_input_function(image)
+#
+#     with tf.GradientTape() as tape:
+#         tape.watch(image)
+#
+#         predictions = used_model(image, training=False)
+#         if(positive_class):
+#             target_class_output = predictions[:,1]
+#         else:
+#             target_class_output = predictions[:,0]
+#
+#     last_conv_layer_output = used_model.get_layer(layer_name).output
+#     gradients = tape.gradient(target_class_output,last_conv_layer_output)
+#
+#     pooled_gradient = tf.reduce_mean(gradients, axis=(0,1,2))
+#     heatmap = tf.reduce_sum(tf.multiply(pooled_gradient, last_conv_layer_output), axis=-1)
+#     heatmap = tf.nn.relu(heatmap)
+#
+#     if normalize:
+#         min_value = tf.reduce_min(heatmap)
+#         max_value = tf.reduce_max(heatmap)
+#         heatmap = (heatmap - min_value)/(max_value - min_value)
+#
+#     heatmap = heatmap.numpy()
+#     return heatmap
 
 
 
+def make_gradcam_heatmap(image, used_model, last_conv_name, pred_index):
+
+    grad_model = models.Model(used_model.inputs, [used_model.get_layer(last_conv_name).output, used_model.output])
+
+    with tf.GradientTape() as tape:
+        last_conv_layer_ouput, preds = grad_model(image)
+        if pred_index is None:
+            pred_index = tf.argmax(preds[0])
+        class_channel = preds[:, pred_index]
+
+    grads = tape.gradient(class_channel, last_conv_layer_ouput)
+    pooled_grads = tf.reduce_mean(grads, axis=(0,1,2))
+    last_conv_layer_ouput = last_conv_layer_ouput[0]
+    heatmap = last_conv_layer_ouput @ pooled_grads[..., tf.newaxis]
+    heatmap = tf.squeeze(heatmap)
+
+    heatmap = tf.maximum(heatmap, 0) / tf.math.reduce_max(heatmap)
+    heatmap = heatmap.numpy()
+    return heatmap
+
+
+
+
+# solo models
 def cnn_model(image_shape=(150 , 150, 1)):
     # konfigurace vrstev
     num_conv_filters = 32        # pocet conv. filtru

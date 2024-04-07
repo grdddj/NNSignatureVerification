@@ -1,4 +1,5 @@
 import matplotlib.pyplot as plt
+import matplotlib as mpl
 from PIL import Image
 from keras import backend as K
 import numpy as np
@@ -6,6 +7,7 @@ import tensorflow as tf
 import pywt
 import cv2
 from keras.callbacks import EarlyStopping, ModelCheckpoint, ReduceLROnPlateau, LearningRateScheduler
+from keras import utils
 
 
 def show_single_image(img):
@@ -239,6 +241,22 @@ def six_fold_surface(image):
         all_features.append(features)
 
     return all_features
+
+def save_and_display_gradcam(image, heatmap, cam_path="heatmap.jpg", alpha=0.4):
+    heatmap = np.unit8(255*heatmap)
+    jet = mpl.colormaps("jet")
+    jet_colors = jet(np.arange(256))[:,:3]
+    jet_heatmap = jet_colors[heatmap]
+    jet_heatmap = utils.array_to_img(jet_heatmap)
+    jet_heatmap = jet_heatmap.resize((image.shape[1], image.shape[0]))
+    jet_heatmap = utils.img_to_array(jet_heatmap)
+
+    superimposed_img = jet_heatmap * alpha + image
+    superimposed_img = utils.array_to_img(superimposed_img)
+    superimposed_img.save(cam_path)
+    show_single_image(superimposed_img)
+
+
 
 
 
