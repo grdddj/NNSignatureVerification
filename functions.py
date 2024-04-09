@@ -1,5 +1,6 @@
 import matplotlib.pyplot as plt
 import matplotlib as mpl
+import shap
 from PIL import Image
 from keras import backend as K
 import numpy as np
@@ -256,6 +257,12 @@ def save_and_display_gradcam(image, heatmap, cam_path="heatmap.jpg", alpha=0.4):
     superimposed_img.save(cam_path)
     show_single_image(superimposed_img)
 
+def visualize_with_shap(image, model):
+    shap.initjs()
+    masker = shap.maskers.Image("inapaint_telea", image.shape)
+    explainer = shap.Explainer(model, masker, [0,1]) #TODO add names accordingly to predictions
+    shap_values = explainer(image)
+    shap.image_plot(shap_values)
 
 
 
