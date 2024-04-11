@@ -114,12 +114,15 @@ def cnn_train_augmented(epochs = 100, batch_size = 32, img_width = 150, img_heig
 
     print('\n\n\n\nAAAAAALLL DONE')
 
-def snn_train(epochs = 100, batch_size = 32, img_width = 150, img_height = 150, dataset='cedar', size=2000):
+def snn_train(epochs = 100, batch_size = 32, img_width = 150, img_height = 150, dataset='cedar', size=2000, type=None):
     SNNMODEL = model.snn_model(image_shape=(img_width, img_height, CHANNELS))
-    data_pairs, data_labels = loader.loader_for_snn(image_width=img_width, image_height=img_height, size=2000)
+    data_pairs, data_labels = loader.loader_for_snn(image_width=img_width, image_height=img_height, size=size)
+    if type is not None:
+        feature = functions.add_features(data_pairs, type=type)
+
 
     hist = SNNMODEL.fit(
-        x=([data_pairs[:, 0, :,:], data_pairs[:,1,:,:]]),
+        x=([data_pairs[:, 0, :,:],feature[:, 0], data_pairs[:,1,:,:], feature[:,1]]),
         y=data_labels,
         #steps_per_epoch= int(len(train_pairs)/BATCH_SIZE),
         batch_size=batch_size,
@@ -132,7 +135,7 @@ def snn_train(epochs = 100, batch_size = 32, img_width = 150, img_height = 150, 
         #callbacks=functions.callbacks()
     )
 
-    SNNMODEL.save(os.path.join('models', 'SnnSignatureVerificatorFinal.h5'))
+    # SNNMODEL.save(os.path.join('models', 'SnnSignatureVerificatorFinal.h5'))
     SNNMODEL.summary()
 
     # fig = plt.figure(figsize=(7, 7))
@@ -142,12 +145,12 @@ def snn_train(epochs = 100, batch_size = 32, img_width = 150, img_height = 150, 
     # plt.legend(loc="upper left")
     # plt.show()
     #
-    # fig = plt.figure(figsize=(7, 7))
-    # plt.plot(hist.history['accuracy'], color='teal', label='accuracy')
-    # plt.plot(hist.history['val_accuracy'], color='orange', label='val_accuracy')
-    # fig.suptitle('Accuracy', fontsize=20)
-    # plt.legend(loc="upper left")
-    # plt.show()
+    fig = plt.figure(figsize=(7, 7))
+    plt.plot(hist.history['accuracy'], color='teal', label='accuracy')
+    plt.plot(hist.history['val_accuracy'], color='orange', label='val_accuracy')
+    fig.suptitle('Accuracy', fontsize=20)
+    plt.legend(loc="upper left")
+    plt.show(block=True)
 
 def continue_on_cnn():
     pass

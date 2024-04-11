@@ -265,33 +265,6 @@ def loader_for_cnn(data_dir="data", image_width=150, image_height=150, dataset='
     path_to_forg = data_dir +'/forgery'
 
     start_time = time.time()
-    # THIS IS OLD :]
-
-    # Tohle nahraje do listu, kde se obr8ykz nachazi
-    '''Tohle vraci array typu clovek[podpis1[], podpis2[]], clovek2[podpis1[], podpis2[]] tak na to nezapominej'''
-    # orig_train, orig_test, orig_val = create_for_tr_ts_val_data(path_to_orig, dataset=dataset)
-    # forg_train, forg_test, forg_val = create_for_tr_ts_val_data(path_to_forg, dataset=dataset)
-
-    # orig_train, orig_train_labels = convert_array_to_image_labels(orig_train, genuine=True,)
-    # orig_test, orig_test_labels = convert_array_to_image_labels(orig_test, genuine=True)
-    # orig_val, orig_val_labels = convert_array_to_image_labels(orig_val, genuine=True)
-    # forg_train, forg_train_labels = convert_array_to_image_labels(forg_train, genuine=False)
-    # forg_test, forg_test_labels = convert_array_to_image_labels(forg_test, genuine=False, augmented=True)
-    # forg_val, forg_val_labels = convert_array_to_image_labels(forg_val, genuine=False)
-
-    #
-    # train_data, train_labels = combine_orig_forg(orig_train, forg_train, orig_train_labels, forg_train_labels)
-    # test_data, test_labels = combine_orig_forg(orig_test, forg_test, orig_test_labels, forg_test_labels)
-    # val_data, val_labels = combine_orig_forg(orig_val, forg_val, orig_val_labels, forg_val_labels)
-
-    # print(f'Train dataset: {len(train_data)} and labels: {len(train_labels)}')
-    # print(f'Train dataset: {len(test_data)} and labels: {len(test_labels)}')
-    # print(f'Train dataset: {len(val_data)} and labels: {len(val_labels)}')
-
-    # train_data, train_labels = np.array(train_data), np.array(train_labels, dtype=np.float32)
-    # test_data, test_labels = np.array(test_data), np.array(test_labels, dtype=np.float32)
-    # val_data, val_labels = np.array(val_data), np.array(val_labels, dtype=np.float32)
-    # return train_data, train_labels, test_data, test_labels, val_data, val_labels
 
     # THIS IS CURRENT :]
     orig_data = create_data(path_to_orig, dataset=dataset)
@@ -392,6 +365,8 @@ def convert_pairs_to_image_pairs(pair_array, labels, img_w=150, img_h=150, outpu
 
 def make_pairs(orig_data, forg_data):
     orig_pairs, forg_pairs = [], []
+    orig_feature, forg_feature = [], []
+
     # if output_size == 0:
     for orig, forg in zip(orig_data, forg_data):
         orig_pairs.extend(list(itertools.combinations(orig, 2)))

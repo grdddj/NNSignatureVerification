@@ -10,6 +10,9 @@ import cv2
 from keras.callbacks import EarlyStopping, ModelCheckpoint, ReduceLROnPlateau, LearningRateScheduler
 from keras import utils
 
+# TODO TODO TODO Natrenovat pro kazdou mnozinu, a udelat experimenty, spojit mnoziny a natrenovat na te vizulizovat pri predikci
+# TODO TODO Predelat main aby to davalo vetsi smysl, pridat installation do README a requirements a dopsat to konecne kurva
+# TODO pokud bude cas vytvorit jeste jeden model ktery bude pracovat jen s priznaky ^^
 
 def show_single_image(img):
     plt.imshow(img, cmap="gray")
@@ -123,6 +126,7 @@ def wavelet_transformation(image):
     cA = cA.flatten()
     cH = cH.flatten()
     wavelet_features = np.concatenate((cA,cH))
+    wavelet_features = wavelet_features.flatten()
     return wavelet_features
 
 # Count of pixels and representation of count of pixel upon y and x axis (histogram):
@@ -264,6 +268,27 @@ def visualize_with_shap(image, model):
     shap_values = explainer(image)
     shap.image_plot(shap_values)
 
+
+
+def add_features(data, isPair=True, type="strokes"):
+    feature = []
+
+    if type == "strokes":
+        if isPair:
+            for pair in data:
+                stroke1 = get_image_strokes(pair[0])
+                stroke2 = get_image_strokes(pair[1])
+                feature.append([stroke1,stroke2])
+    elif type == "wavelet":
+        if isPair:
+            for pair in data:
+                wavelet1 = wavelet_transformation(pair[0])
+                wavelet2 = wavelet_transformation(pair[1])
+                feature.append([wavelet1, wavelet2])
+
+
+    print(len(feature))
+    return np.array(feature)
 
 
 
