@@ -7,7 +7,7 @@ import keras
 import PIL
 import tensorflow as tf
 from keras import backend, layers, models
-from keras.backend import relu, sigmoid
+from keras.activations import relu, sigmoid
 from keras.optimizers import SGD, Adadelta, RMSprop
 from tensorflow.keras.layers import (
     BatchNormalization,
