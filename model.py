@@ -77,7 +77,7 @@ def make_gradcam_heatmap(image, used_model, last_conv_name, pred_index):
 
 
 # solo models
-def cnn_model(image_shape=(150, 150, 1)):
+def cnn_model(image_shape: tuple[int, int, int] = (150, 150, 1)) -> Sequential:
     # konfigurace vrstev
     num_conv_filters = 32  # pocet conv. filtru
     max_pool_size = (2, 2)  # velikost maxpool filtru
@@ -167,7 +167,7 @@ def cnn_model(image_shape=(150, 150, 1)):
     return model
 
 
-def snn_base_cnn_model(image_shape=(100, 100, 1)):
+def snn_base_cnn_model(image_shape: tuple[int, int, int] = (100, 100, 1)) -> Sequential:
     num_conv_filters = 32  # pocet conv. filtru
     max_pool_size = (2, 2)  # velikost maxpool filtru
     conv_kernel_size = (3, 3)  # velikost conv. filtru
@@ -248,7 +248,7 @@ def snn_base_cnn_model(image_shape=(100, 100, 1)):
 
 
 # Local X normal features
-def cnn_local_features(image_shape=(100, 100, 1)):
+def cnn_local_features(image_shape: tuple[int, int, int] = (100, 100, 1)) -> Sequential:
     num_conv_filters = 16  # pocet conv. filtru
     max_pool_size = (2, 2)  # velikost maxpool filtru
     conv_kernel_size = (3, 3)  # velikost conv. filtru
@@ -290,7 +290,7 @@ def cnn_local_features(image_shape=(100, 100, 1)):
 #     return Model(inputs=patch_inputs, outputs=dense)
 
 
-def snn_model(image_shape=(100, 100, 1)):
+def snn_model(image_shape: tuple[int, int, int] = (100, 100, 1)) -> Model:
     base_network = snn_base_cnn_model(image_shape)
     image1 = Input(shape=(image_shape), name="image1")
     print(f"\nshape of im1 is {image1.shape}")

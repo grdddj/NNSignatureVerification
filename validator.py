@@ -5,7 +5,7 @@ from tensorflow.keras.models import load_model
 import loader
 
 
-def test_model(datadir="fromServer"):
+def test_model(datadir: str = "fromServer") -> None:
     models = glob.glob(datadir + "/*.h5")
     for i in range(len(models)):
         print(f"{i}: {models[i]}")

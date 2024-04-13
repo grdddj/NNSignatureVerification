@@ -19,7 +19,7 @@ from keras.callbacks import (
 # TODO pokud bude cas vytvorit jeste jeden model ktery bude pracovat jen s priznaky ^^
 
 
-def show_single_image(img):
+def show_single_image(img) -> None:
     plt.imshow(img, cmap="gray")
     plt.axis("off")
     plt.show(block=True)
