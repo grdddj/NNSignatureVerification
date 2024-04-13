@@ -2,13 +2,8 @@
 @author: Petr Čírtek
 """
 
-# Not used imports
-import keras
-import PIL
 import tensorflow as tf
-from keras import backend, layers, models
-from keras.activations import relu, sigmoid
-from keras.optimizers import SGD, Adadelta, RMSprop
+from keras import layers, models
 from tensorflow.keras.layers import (
     BatchNormalization,
     Concatenate,
@@ -17,19 +12,13 @@ from tensorflow.keras.layers import (
     Dropout,
     Flatten,
     Input,
-    Lambda,
     MaxPool2D,
     MaxPooling2D,
-    Reshape,
-    ZeroPadding2D,
 )
 
 # True imports
 from tensorflow.keras.models import Model, Sequential
-from tensorflow.keras.regularizers import L1, L1L2, L2
-
-import functions
-from functions import euclidan_dist_output_shape, euclidan_distance
+from tensorflow.keras.regularizers import L1L2
 
 # gradcam model:
 # def gradcam_heatmap(image, used_model, layer_name, positive_class=True, preprocess_input_function=None, normalize=True):

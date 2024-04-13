@@ -1,7 +1,5 @@
 import glob
 
-import keras
-import tensorflow as tf
 from tensorflow.keras.models import load_model
 
 import loader

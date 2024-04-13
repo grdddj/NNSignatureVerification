@@ -13,7 +13,6 @@ from keras.callbacks import (
     ModelCheckpoint,
     ReduceLROnPlateau,
 )
-from PIL import Image
 
 # TODO TODO TODO Natrenovat pro kazdou mnozinu, a udelat experimenty, spojit mnoziny a natrenovat na te vizulizovat pri predikci
 # TODO TODO Predelat main aby to davalo vetsi smysl, pridat installation do README a requirements a dopsat to konecne kurva

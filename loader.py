@@ -3,7 +3,6 @@
 """
 
 import glob
-import imghdr
 import itertools
 import os
 import random
@@ -17,11 +16,8 @@ matplotlib.use("TkAgg")
 import cv2
 import matplotlib.pyplot as plt
 import numpy as np
-import PIL
 import tensorflow as tf
-import tensorflow_datasets as tfds
 from PIL import Image
-from sklearn.utils import shuffle
 
 IMAGE_TYPES = ["jpeg", "png", "bmp", "png"]
 DATASET_NUM_CLASSES = {

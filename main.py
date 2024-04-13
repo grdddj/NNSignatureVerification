@@ -1,30 +1,16 @@
 from __future__ import absolute_import, division, print_function, unicode_literals
 
 # IMPORTING ALLES :))
-import datetime
 import os
-import pickle
-import sys
 
 import matplotlib
-import numpy as np
 
 import functions
 
 matplotlib.use("TkAgg")
-import glob
-import itertools
-import logging
-import random
-import time
 
-import cv2
-import tensorflow as tf
-from keras.models import Sequential
-from keras.optimizers import Adam
+
 from matplotlib import pyplot as plt
-from sklearn.utils import shuffle
-from tensorflow.keras.metrics import BinaryAccuracy, Precision, Recall
 from tensorflow.keras.models import load_model
 
 import loader
