@@ -1,0 +1,13 @@
+# sudo apt install libgl1-mesa-glx ... fixing ImportError: libGL.so.1 for cv2
+# sudo apt install python3-tk ... getting possibly missing tkinter
+opencv-python
+matplotlib
+numpy
+PyWavelets
+shap
+tensorflow
+keras
+Pillow
+scikit-learn
+scipy
+tensorflow_datasets
